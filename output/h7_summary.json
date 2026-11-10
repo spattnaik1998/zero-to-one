@@ -1,0 +1,314 @@
+{
+ "n_both": 7482,
+ "firms_both": 1040,
+ "by_sector": {
+  "Hardware and electronics": {
+   "median_sm_pct": 14.83,
+   "median_rd_pct": 14.96,
+   "pct_firms_sm_above_rd": 55.68
+  },
+  "Other": {
+   "median_sm_pct": 14.15,
+   "median_rd_pct": 6.26,
+   "pct_firms_sm_above_rd": 79.79
+  },
+  "Pharma, biotech, medical": {
+   "median_sm_pct": 28.44,
+   "median_rd_pct": 9.6,
+   "pct_firms_sm_above_rd": 87.56
+  },
+  "Software and internet": {
+   "median_sm_pct": 29.35,
+   "median_rd_pct": 19.03,
+   "pct_firms_sm_above_rd": 74.28
+  }
+ },
+ "software_1bn": {
+  "median_sm_pct": 29.2,
+  "median_rd_pct": 19.05,
+  "pct_sm_above_rd": 73.1,
+  "firms": 112
+ },
+ "software_median_by_year": {
+  "2011": {
+   "sm_int": 27.64,
+   "rd_int": 15.51
+  },
+  "2012": {
+   "sm_int": 28.44,
+   "rd_int": 17.1
+  },
+  "2013": {
+   "sm_int": 28.99,
+   "rd_int": 16.86
+  },
+  "2014": {
+   "sm_int": 32.11,
+   "rd_int": 17.39
+  },
+  "2015": {
+   "sm_int": 30.7,
+   "rd_int": 18.51
+  },
+  "2016": {
+   "sm_int": 31.13,
+   "rd_int": 19.09
+  },
+  "2017": {
+   "sm_int": 31.02,
+   "rd_int": 18.45
+  },
+  "2018": {
+   "sm_int": 29.91,
+   "rd_int": 19.09
+  },
+  "2019": {
+   "sm_int": 30.25,
+   "rd_int": 19.32
+  },
+  "2020": {
+   "sm_int": 28.6,
+   "rd_int": 20.09
+  },
+  "2021": {
+   "sm_int": 29.08,
+   "rd_int": 21.33
+  },
+  "2022": {
+   "sm_int": 30.5,
+   "rd_int": 20.92
+  },
+  "2023": {
+   "sm_int": 29.51,
+   "rd_int": 19.97
+  },
+  "2024": {
+   "sm_int": 27.95,
+   "rd_int": 19.76
+  },
+  "2025": {
+   "sm_int": 25.8,
+   "rd_int": 20.03
+  }
+ },
+ "growth_regressions": [
+  {
+   "sample": "all",
+   "x": "sm_int",
+   "coef": 0.2847,
+   "se": 0.0363,
+   "p": 0.0,
+   "n": 6389.0,
+   "clusters": 980.0
+  },
+  {
+   "sample": "all",
+   "x": "rd_int",
+   "coef": 0.1012,
+   "se": 0.05,
+   "p": 0.0432,
+   "n": 6389.0,
+   "clusters": 980.0
+  },
+  {
+   "sample": "software and internet",
+   "x": "sm_int",
+   "coef": 0.2885,
+   "se": 0.0447,
+   "p": 0.0,
+   "n": 2515.0,
+   "clusters": 371.0
+  },
+  {
+   "sample": "software and internet",
+   "x": "rd_int",
+   "coef": 0.0569,
+   "se": 0.0718,
+   "p": 0.4286,
+   "n": 2515.0,
+   "clusters": 371.0
+  },
+  {
+   "sample": "all, 2011-2014",
+   "x": "sm_int",
+   "coef": 0.4301,
+   "se": 0.0623,
+   "p": 0.0,
+   "n": 1710.0,
+   "clusters": 548.0
+  },
+  {
+   "sample": "all, 2011-2014",
+   "x": "rd_int",
+   "coef": 0.0239,
+   "se": 0.1016,
+   "p": 0.8137,
+   "n": 1710.0,
+   "clusters": 548.0
+  },
+  {
+   "sample": "all, 2015+",
+   "x": "sm_int",
+   "coef": 0.2418,
+   "se": 0.0392,
+   "p": 0.0,
+   "n": 4679.0,
+   "clusters": 842.0
+  },
+  {
+   "sample": "all, 2015+",
+   "x": "rd_int",
+   "coef": 0.1236,
+   "se": 0.0514,
+   "p": 0.0165,
+   "n": 4679.0,
+   "clusters": 842.0
+  }
+ ],
+ "valuation_regressions": [
+  {
+   "sample": "all",
+   "x": "sm_int",
+   "coef": 1.3308,
+   "se": 0.2259,
+   "p": 0.0,
+   "n": 5315.0,
+   "clusters": 860.0
+  },
+  {
+   "sample": "all",
+   "x": "rd_int",
+   "coef": 3.3807,
+   "se": 0.3175,
+   "p": 0.0,
+   "n": 5315.0,
+   "clusters": 860.0
+  },
+  {
+   "sample": "all",
+   "x": "g_now",
+   "coef": 1.1007,
+   "se": 0.1138,
+   "p": 0.0,
+   "n": 5315.0,
+   "clusters": 860.0
+  },
+  {
+   "sample": "all",
+   "x": "op_margin",
+   "coef": 1.5377,
+   "se": 0.1431,
+   "p": 0.0,
+   "n": 5315.0,
+   "clusters": 860.0
+  },
+  {
+   "sample": "software and internet",
+   "x": "sm_int",
+   "coef": 1.3922,
+   "se": 0.333,
+   "p": 0.0,
+   "n": 2055.0,
+   "clusters": 329.0
+  },
+  {
+   "sample": "software and internet",
+   "x": "rd_int",
+   "coef": 3.1471,
+   "se": 0.4035,
+   "p": 0.0,
+   "n": 2055.0,
+   "clusters": 329.0
+  },
+  {
+   "sample": "software and internet",
+   "x": "g_now",
+   "coef": 2.0635,
+   "se": 0.199,
+   "p": 0.0,
+   "n": 2055.0,
+   "clusters": 329.0
+  },
+  {
+   "sample": "software and internet",
+   "x": "op_margin",
+   "coef": 1.739,
+   "se": 0.2002,
+   "p": 0.0,
+   "n": 2055.0,
+   "clusters": 329.0
+  }
+ ],
+ "efficiency": {
+  "2012": {
+   "median": 0.625,
+   "n": 127,
+   "median_rev_1bn_plus": 0.628
+  },
+  "2013": {
+   "median": 0.555,
+   "n": 130,
+   "median_rev_1bn_plus": 0.583
+  },
+  "2014": {
+   "median": 0.584,
+   "n": 144,
+   "median_rev_1bn_plus": 0.627
+  },
+  "2015": {
+   "median": 0.501,
+   "n": 145,
+   "median_rev_1bn_plus": 0.622
+  },
+  "2016": {
+   "median": 0.443,
+   "n": 152,
+   "median_rev_1bn_plus": 0.656
+  },
+  "2017": {
+   "median": 0.558,
+   "n": 165,
+   "median_rev_1bn_plus": 0.648
+  },
+  "2018": {
+   "median": 0.587,
+   "n": 166,
+   "median_rev_1bn_plus": 0.682
+  },
+  "2019": {
+   "median": 0.613,
+   "n": 189,
+   "median_rev_1bn_plus": 0.642
+  },
+  "2020": {
+   "median": 0.58,
+   "n": 223,
+   "median_rev_1bn_plus": 0.729
+  },
+  "2021": {
+   "median": 0.834,
+   "n": 224,
+   "median_rev_1bn_plus": 0.92
+  },
+  "2022": {
+   "median": 0.587,
+   "n": 211,
+   "median_rev_1bn_plus": 0.633
+  },
+  "2023": {
+   "median": 0.356,
+   "n": 208,
+   "median_rev_1bn_plus": 0.46
+  },
+  "2024": {
+   "median": 0.361,
+   "n": 200,
+   "median_rev_1bn_plus": 0.523
+  },
+  "2025": {
+   "median": 0.398,
+   "n": 185,
+   "median_rev_1bn_plus": 0.545
+  }
+ }
+}

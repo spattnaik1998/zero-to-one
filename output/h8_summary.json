@@ -1,0 +1,1143 @@
+{
+ "end_year": 2025,
+ "last_aggregate_year": 2024,
+ "aggregate_periods": {
+  "1979-1995": {
+   "Labour productivity, % per year": 1.5,
+   "Real median weekly earnings, % per year": -0.33,
+   "Labour share, change in points": -3.61,
+   "Prime-age employment rate at end, %": 79.74
+  },
+  "1995-2004": {
+   "Labour productivity, % per year": 3.04,
+   "Real median weekly earnings, % per year": 0.79,
+   "Labour share, change in points": -0.83,
+   "Prime-age employment rate at end, %": 78.97
+  },
+  "2004-2014": {
+   "Labour productivity, % per year": 1.56,
+   "Real median weekly earnings, % per year": -0.1,
+   "Labour share, change in points": -7.68,
+   "Prime-age employment rate at end, %": 76.7
+  },
+  "2014-2024": {
+   "Labour productivity, % per year": 1.79,
+   "Real median weekly earnings, % per year": 1.0,
+   "Labour share, change in points": -2.27,
+   "Prime-age employment rate at end, %": 80.72
+  }
+ },
+ "employment_levels": {
+  "2000": {
+   "prime_age_employment_rate": 81.5,
+   "unemployment_rate": 4.0
+  },
+  "2007": {
+   "prime_age_employment_rate": 79.9,
+   "unemployment_rate": 4.6
+  },
+  "2014": {
+   "prime_age_employment_rate": 76.7,
+   "unemployment_rate": 6.2
+  },
+  "2019": {
+   "prime_age_employment_rate": 80.0,
+   "unemployment_rate": 3.7
+  },
+  "2024": {
+   "prime_age_employment_rate": 80.7,
+   "unemployment_rate": 4.0
+  }
+ },
+ "coverage": {
+  "share_2014_emp_matched": 97.8,
+  "share_2025_emp_matched": 97.5,
+  "groups": 772,
+  "groups_with_onet": 728
+ },
+ "quintiles_computer": {
+  "Q1 (least)": {
+   "mean_computer": 2.145,
+   "occupations": 162.0,
+   "emp_2014_m": 25.711,
+   "emp_2025_m": 27.942,
+   "emp_growth_pct_yr": 0.757,
+   "real_wage_growth_pct_yr": 1.271
+  },
+  "Q2": {
+   "mean_computer": 2.927,
+   "occupations": 101.0,
+   "emp_2014_m": 25.656,
+   "emp_2025_m": 30.225,
+   "emp_growth_pct_yr": 1.49,
+   "real_wage_growth_pct_yr": 1.277
+  },
+  "Q3": {
+   "mean_computer": 3.682,
+   "occupations": 197.0,
+   "emp_2014_m": 25.937,
+   "emp_2025_m": 28.28,
+   "emp_growth_pct_yr": 0.786,
+   "real_wage_growth_pct_yr": 0.723
+  },
+  "Q4": {
+   "mean_computer": 4.259,
+   "occupations": 133.0,
+   "emp_2014_m": 26.016,
+   "emp_2025_m": 28.725,
+   "emp_growth_pct_yr": 0.901,
+   "real_wage_growth_pct_yr": 1.015
+  },
+  "Q5 (most)": {
+   "mean_computer": 4.587,
+   "occupations": 132.0,
+   "emp_2014_m": 25.961,
+   "emp_2025_m": 33.145,
+   "emp_growth_pct_yr": 2.221,
+   "real_wage_growth_pct_yr": 0.706
+  }
+ },
+ "quintiles_automation": {
+  "Q1 (least)": {
+   "mean_automation": 1.551,
+   "occupations": 230.0,
+   "emp_2014_m": 25.228,
+   "emp_2025_m": 28.466,
+   "emp_growth_pct_yr": 1.098,
+   "real_wage_growth_pct_yr": 0.616
+  },
+  "Q2": {
+   "mean_automation": 1.895,
+   "occupations": 136.0,
+   "emp_2014_m": 25.976,
+   "emp_2025_m": 31.91,
+   "emp_growth_pct_yr": 1.87,
+   "real_wage_growth_pct_yr": 0.763
+  },
+  "Q3": {
+   "mean_automation": 2.124,
+   "occupations": 100.0,
+   "emp_2014_m": 26.308,
+   "emp_2025_m": 27.942,
+   "emp_growth_pct_yr": 0.548,
+   "real_wage_growth_pct_yr": 1.068
+  },
+  "Q4": {
+   "mean_automation": 2.338,
+   "occupations": 104.0,
+   "emp_2014_m": 25.78,
+   "emp_2025_m": 31.064,
+   "emp_growth_pct_yr": 1.695,
+   "real_wage_growth_pct_yr": 0.948
+  },
+  "Q5 (most)": {
+   "mean_automation": 2.745,
+   "occupations": 155.0,
+   "emp_2014_m": 25.987,
+   "emp_2025_m": 28.936,
+   "emp_growth_pct_yr": 0.977,
+   "real_wage_growth_pct_yr": 1.438
+  }
+ },
+ "quintiles_repetitive": {
+  "Q1 (least)": {
+   "mean_repetitive": 2.57,
+   "occupations": 220.0,
+   "emp_2014_m": 25.587,
+   "emp_2025_m": 29.469,
+   "emp_growth_pct_yr": 1.284,
+   "real_wage_growth_pct_yr": 0.657
+  },
+  "Q2": {
+   "mean_repetitive": 3.113,
+   "occupations": 140.0,
+   "emp_2014_m": 26.03,
+   "emp_2025_m": 35.109,
+   "emp_growth_pct_yr": 2.72,
+   "real_wage_growth_pct_yr": 0.832
+  },
+  "Q3": {
+   "mean_repetitive": 3.39,
+   "occupations": 105.0,
+   "emp_2014_m": 25.705,
+   "emp_2025_m": 29.028,
+   "emp_growth_pct_yr": 1.105,
+   "real_wage_growth_pct_yr": 1.289
+  },
+  "Q4": {
+   "mean_repetitive": 3.656,
+   "occupations": 141.0,
+   "emp_2014_m": 25.848,
+   "emp_2025_m": 28.908,
+   "emp_growth_pct_yr": 1.017,
+   "real_wage_growth_pct_yr": 0.908
+  },
+  "Q5 (most)": {
+   "mean_repetitive": 4.293,
+   "occupations": 119.0,
+   "emp_2014_m": 26.11,
+   "emp_2025_m": 25.805,
+   "emp_growth_pct_yr": -0.107,
+   "real_wage_growth_pct_yr": 1.006
+  }
+ },
+ "quintiles_pay": {
+  "Q1 (least)": {
+   "mean_pay_2014_k": 21.971,
+   "occupations": 52.0,
+   "emp_2014_m": 26.072,
+   "emp_2025_m": 30.138,
+   "emp_growth_pct_yr": 1.317,
+   "real_wage_growth_pct_yr": 2.004
+  },
+  "Q2": {
+   "mean_pay_2014_k": 28.409,
+   "occupations": 103.0,
+   "emp_2014_m": 26.554,
+   "emp_2025_m": 26.243,
+   "emp_growth_pct_yr": -0.107,
+   "real_wage_growth_pct_yr": 1.214
+  },
+  "Q3": {
+   "mean_pay_2014_k": 37.422,
+   "occupations": 179.0,
+   "emp_2014_m": 26.587,
+   "emp_2025_m": 27.761,
+   "emp_growth_pct_yr": 0.393,
+   "real_wage_growth_pct_yr": 0.569
+  },
+  "Q4": {
+   "mean_pay_2014_k": 54.745,
+   "occupations": 229.0,
+   "emp_2014_m": 25.81,
+   "emp_2025_m": 29.803,
+   "emp_growth_pct_yr": 1.308,
+   "real_wage_growth_pct_yr": 0.099
+  },
+  "Q5 (most)": {
+   "mean_pay_2014_k": 93.916,
+   "occupations": 205.0,
+   "emp_2014_m": 27.009,
+   "emp_2025_m": 37.557,
+   "emp_growth_pct_yr": 2.997,
+   "real_wage_growth_pct_yr": 0.165
+  }
+ },
+ "corr_computer_logpay": 0.525,
+ "regressions": [
+  {
+   "x": "z_computer",
+   "coef": 0.1104,
+   "se": 0.2195,
+   "p": 0.615,
+   "n": 725,
+   "r2": 0.0015,
+   "y": "g_emp",
+   "spec": "z_computer"
+  },
+  {
+   "x": "z_computer",
+   "coef": 0.3808,
+   "se": 0.2363,
+   "p": 0.1076,
+   "n": 725,
+   "r2": 0.0611,
+   "y": "g_emp",
+   "spec": "z_computer + z_automation + z_repetitive"
+  },
+  {
+   "x": "z_automation",
+   "coef": -0.1135,
+   "se": 0.1749,
+   "p": 0.5167,
+   "n": 725,
+   "r2": 0.0611,
+   "y": "g_emp",
+   "spec": "z_computer + z_automation + z_repetitive"
+  },
+  {
+   "x": "z_repetitive",
+   "coef": -0.6919,
+   "se": 0.2222,
+   "p": 0.0019,
+   "n": 725,
+   "r2": 0.0611,
+   "y": "g_emp",
+   "spec": "z_computer + z_automation + z_repetitive"
+  },
+  {
+   "x": "z_computer",
+   "coef": -0.3763,
+   "se": 0.1832,
+   "p": 0.0404,
+   "n": 725,
+   "r2": 0.1333,
+   "y": "g_emp",
+   "spec": "z_computer + z_automation + z_repetitive + z_logwage"
+  },
+  {
+   "x": "z_automation",
+   "coef": -0.1186,
+   "se": 0.1514,
+   "p": 0.4336,
+   "n": 725,
+   "r2": 0.1333,
+   "y": "g_emp",
+   "spec": "z_computer + z_automation + z_repetitive + z_logwage"
+  },
+  {
+   "x": "z_repetitive",
+   "coef": -0.3269,
+   "se": 0.1758,
+   "p": 0.0633,
+   "n": 725,
+   "r2": 0.1333,
+   "y": "g_emp",
+   "spec": "z_computer + z_automation + z_repetitive + z_logwage"
+  },
+  {
+   "x": "z_logwage",
+   "coef": 1.0368,
+   "se": 0.2356,
+   "p": 0.0,
+   "n": 725,
+   "r2": 0.1333,
+   "y": "g_emp",
+   "spec": "z_computer + z_automation + z_repetitive + z_logwage"
+  },
+  {
+   "x": "z_computer",
+   "coef": -0.5242,
+   "se": 0.0593,
+   "p": 0.0,
+   "n": 725,
+   "r2": 0.3179,
+   "y": "g_wage",
+   "spec": "z_computer"
+  },
+  {
+   "x": "z_computer",
+   "coef": -0.5798,
+   "se": 0.0634,
+   "p": 0.0,
+   "n": 725,
+   "r2": 0.342,
+   "y": "g_wage",
+   "spec": "z_computer + z_automation + z_repetitive"
+  },
+  {
+   "x": "z_automation",
+   "coef": 0.0455,
+   "se": 0.0822,
+   "p": 0.5799,
+   "n": 725,
+   "r2": 0.342,
+   "y": "g_wage",
+   "spec": "z_computer + z_automation + z_repetitive"
+  },
+  {
+   "x": "z_repetitive",
+   "coef": 0.1317,
+   "se": 0.0694,
+   "p": 0.0581,
+   "n": 725,
+   "r2": 0.342,
+   "y": "g_wage",
+   "spec": "z_computer + z_automation + z_repetitive"
+  },
+  {
+   "x": "z_computer",
+   "coef": -0.1355,
+   "se": 0.0561,
+   "p": 0.016,
+   "n": 725,
+   "r2": 0.5728,
+   "y": "g_wage",
+   "spec": "z_computer + z_automation + z_repetitive + z_logwage"
+  },
+  {
+   "x": "z_automation",
+   "coef": 0.0485,
+   "se": 0.0575,
+   "p": 0.3987,
+   "n": 725,
+   "r2": 0.5728,
+   "y": "g_wage",
+   "spec": "z_computer + z_automation + z_repetitive + z_logwage"
+  },
+  {
+   "x": "z_repetitive",
+   "coef": -0.0825,
+   "se": 0.0616,
+   "p": 0.1811,
+   "n": 725,
+   "r2": 0.5728,
+   "y": "g_wage",
+   "spec": "z_computer + z_automation + z_repetitive + z_logwage"
+  },
+  {
+   "x": "z_logwage",
+   "coef": -0.6085,
+   "se": 0.0845,
+   "p": 0.0,
+   "n": 725,
+   "r2": 0.5728,
+   "y": "g_wage",
+   "spec": "z_computer + z_automation + z_repetitive + z_logwage"
+  }
+ ],
+ "movers": [
+  {
+   "title": "Telemarketers",
+   "emp_2014": 234520.0,
+   "emp_2025": 58430.0,
+   "g_emp": -12.63,
+   "g_wage": 0.81,
+   "computer": 3.61,
+   "automation": 3.09,
+   "repetitive": 4.17,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Computer Programmers",
+   "emp_2014": 302150.0,
+   "emp_2025": 92230.0,
+   "g_emp": -10.79,
+   "g_wage": -0.37,
+   "computer": 4.95,
+   "automation": 2.29,
+   "repetitive": 3.15,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Switchboard Operators, Including Answering Service",
+   "emp_2014": 108890.0,
+   "emp_2025": 34280.0,
+   "g_emp": -10.51,
+   "g_wage": 1.19,
+   "computer": 3.79,
+   "automation": 2.31,
+   "repetitive": 3.58,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Helpers--Production Workers",
+   "emp_2014": 420520.0,
+   "emp_2025": 165700.0,
+   "g_emp": -8.47,
+   "g_wage": 1.75,
+   "computer": 2.62,
+   "automation": 2.62,
+   "repetitive": 3.21,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Order Clerks",
+   "emp_2014": 190390.0,
+   "emp_2025": 75200.0,
+   "g_emp": -8.44,
+   "g_wage": 0.86,
+   "computer": 4.31,
+   "automation": 2.48,
+   "repetitive": 3.47,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Machine Feeders and Offbearers",
+   "emp_2014": 104340.0,
+   "emp_2025": 42330.0,
+   "g_emp": -8.2,
+   "g_wage": 0.66,
+   "computer": 2.3,
+   "automation": 2.89,
+   "repetitive": 3.18,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Bill and Account Collectors",
+   "emp_2014": 346960.0,
+   "emp_2025": 158830.0,
+   "g_emp": -7.1,
+   "g_wage": 0.37,
+   "computer": 4.16,
+   "automation": 2.86,
+   "repetitive": 4.3,
+   "list": "fastest decline"
+  },
+  {
+   "title": "File Clerks",
+   "emp_2014": 148280.0,
+   "emp_2025": 73440.0,
+   "g_emp": -6.39,
+   "g_wage": 1.39,
+   "computer": 4.56,
+   "automation": 2.02,
+   "repetitive": 4.06,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Computer, Automated Teller, and Office Machine Repairers",
+   "emp_2014": 110940.0,
+   "emp_2025": 65600.0,
+   "g_emp": -4.78,
+   "g_wage": -0.01,
+   "computer": 4.11,
+   "automation": 2.46,
+   "repetitive": 3.65,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Advertising Sales Agents",
+   "emp_2014": 154220.0,
+   "emp_2025": 91700.0,
+   "g_emp": -4.73,
+   "g_wage": -0.01,
+   "computer": 4.12,
+   "automation": 1.7,
+   "repetitive": 2.67,
+   "list": "fastest decline"
+  },
+  {
+   "title": "First-Line Supervisors of Personal Service Workers (and related)",
+   "emp_2014": 358990.0,
+   "emp_2025": 217300.0,
+   "g_emp": -4.56,
+   "g_wage": -1.83,
+   "computer": 4.14,
+   "automation": 1.99,
+   "repetitive": 3.54,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Data Entry Keyers",
+   "emp_2014": 205950.0,
+   "emp_2025": 127080.0,
+   "g_emp": -4.39,
+   "g_wage": 0.74,
+   "computer": 4.71,
+   "automation": 2.85,
+   "repetitive": 4.81,
+   "list": "fastest decline"
+  },
+  {
+   "title": "Nurse Practitioners",
+   "emp_2014": 122050.0,
+   "emp_2025": 323040.0,
+   "g_emp": 8.85,
+   "g_wage": 0.51,
+   "computer": 4.2,
+   "automation": 2.04,
+   "repetitive": 3.48,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Marketing Managers",
+   "emp_2014": 184490.0,
+   "emp_2025": 395240.0,
+   "g_emp": 6.93,
+   "g_wage": -0.22,
+   "computer": 4.4,
+   "automation": 2.1,
+   "repetitive": 2.78,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Home Health and Personal Care Aides",
+   "emp_2014": 2056080.0,
+   "emp_2025": 4305810.0,
+   "g_emp": 6.72,
+   "g_wage": 2.08,
+   "computer": 2.69,
+   "automation": 2.0,
+   "repetitive": 3.18,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Transportation, Storage, and Distribution Managers",
+   "emp_2014": 106000.0,
+   "emp_2025": 221180.0,
+   "g_emp": 6.69,
+   "g_wage": -0.14,
+   "computer": 4.05,
+   "automation": 2.52,
+   "repetitive": 2.98,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Computer and Information Systems Managers",
+   "emp_2014": 330360.0,
+   "emp_2025": 670570.0,
+   "g_emp": 6.44,
+   "g_wage": 0.56,
+   "computer": 4.9,
+   "automation": 2.56,
+   "repetitive": 3.88,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Human Resources Specialists",
+   "emp_2014": 456170.0,
+   "emp_2025": 912430.0,
+   "g_emp": 6.3,
+   "g_wage": -0.11,
+   "computer": 4.55,
+   "automation": 2.97,
+   "repetitive": 3.87,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Logisticians",
+   "emp_2014": 125670.0,
+   "emp_2025": 251040.0,
+   "g_emp": 6.29,
+   "g_wage": -1.15,
+   "computer": 4.45,
+   "automation": 2.71,
+   "repetitive": 3.36,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Medical and Health Services Managers",
+   "emp_2014": 310320.0,
+   "emp_2025": 597080.0,
+   "g_emp": 5.95,
+   "g_wage": 0.23,
+   "computer": 4.56,
+   "automation": 2.86,
+   "repetitive": 3.79,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Market Research Analysts and Marketing Specialists",
+   "emp_2014": 468160.0,
+   "emp_2025": 899580.0,
+   "g_emp": 5.94,
+   "g_wage": -0.16,
+   "computer": 4.72,
+   "automation": 2.26,
+   "repetitive": 2.9,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Training and Development Specialists",
+   "emp_2014": 239500.0,
+   "emp_2025": 458300.0,
+   "g_emp": 5.9,
+   "g_wage": -0.69,
+   "computer": 4.04,
+   "automation": 1.96,
+   "repetitive": 2.52,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Software Developers (and related)",
+   "emp_2014": 2868900.0,
+   "emp_2025": 5455030.0,
+   "g_emp": 5.84,
+   "g_wage": 0.54,
+   "computer": 4.56,
+   "automation": 2.24,
+   "repetitive": 3.13,
+   "list": "fastest growth"
+  },
+  {
+   "title": "Human Resources Managers",
+   "emp_2014": 116610.0,
+   "emp_2025": 220660.0,
+   "g_emp": 5.8,
+   "g_wage": 0.75,
+   "computer": 4.23,
+   "automation": 2.68,
+   "repetitive": 3.23,
+   "list": "fastest growth"
+  }
+ ],
+ "aggregate_emp_growth_pct_yr": 1.251,
+ "ai": {
+  "n": 729,
+  "quintiles_pre": {
+   "Q1 (least)": {
+    "mean_aioe": -1.36,
+    "occupations": 160.0,
+    "emp_2014_m": 25.413,
+    "emp_2022_m": 27.015,
+    "emp_growth_pct_yr": 0.764,
+    "real_wage_growth_pct_yr": 0.775
+   },
+   "Q2": {
+    "mean_aioe": -0.71,
+    "occupations": 144.0,
+    "emp_2014_m": 26.51,
+    "emp_2022_m": 29.297,
+    "emp_growth_pct_yr": 1.25,
+    "real_wage_growth_pct_yr": 0.797
+   },
+   "Q3": {
+    "mean_aioe": -0.053,
+    "occupations": 122.0,
+    "emp_2014_m": 25.974,
+    "emp_2022_m": 26.581,
+    "emp_growth_pct_yr": 0.288,
+    "real_wage_growth_pct_yr": 1.013
+   },
+   "Q4": {
+    "mean_aioe": 0.822,
+    "occupations": 140.0,
+    "emp_2014_m": 26.234,
+    "emp_2022_m": 28.762,
+    "emp_growth_pct_yr": 1.15,
+    "real_wage_growth_pct_yr": 0.433
+   },
+   "Q5 (most)": {
+    "mean_aioe": 1.261,
+    "occupations": 163.0,
+    "emp_2014_m": 26.256,
+    "emp_2022_m": 31.024,
+    "emp_growth_pct_yr": 2.086,
+    "real_wage_growth_pct_yr": 0.355
+   }
+  },
+  "quintiles_post": {
+   "Q1 (least)": {
+    "mean_aioe": -1.36,
+    "occupations": 160.0,
+    "emp_2022_m": 27.015,
+    "emp_2025_m": 27.556,
+    "emp_growth_pct_yr": 0.662,
+    "real_wage_growth_pct_yr": 1.676
+   },
+   "Q2": {
+    "mean_aioe": -0.707,
+    "occupations": 144.0,
+    "emp_2022_m": 29.297,
+    "emp_2025_m": 31.49,
+    "emp_growth_pct_yr": 2.406,
+    "real_wage_growth_pct_yr": 2.019
+   },
+   "Q3": {
+    "mean_aioe": -0.017,
+    "occupations": 150.0,
+    "emp_2022_m": 29.248,
+    "emp_2025_m": 31.182,
+    "emp_growth_pct_yr": 2.135,
+    "real_wage_growth_pct_yr": 1.843
+   },
+   "Q4": {
+    "mean_aioe": 0.874,
+    "occupations": 117.0,
+    "emp_2022_m": 28.461,
+    "emp_2025_m": 28.571,
+    "emp_growth_pct_yr": 0.129,
+    "real_wage_growth_pct_yr": 1.939
+   },
+   "Q5 (most)": {
+    "mean_aioe": 1.278,
+    "occupations": 158.0,
+    "emp_2022_m": 28.658,
+    "emp_2025_m": 31.056,
+    "emp_growth_pct_yr": 2.678,
+    "real_wage_growth_pct_yr": 1.235
+   }
+  },
+  "regressions": [
+   {
+    "x": "z_aioe",
+    "coef": 0.2363,
+    "se": 0.2552,
+    "p": 0.3547,
+    "n": 729,
+    "r2": 0.0055,
+    "y": "g_emp",
+    "period": "pre",
+    "spec": "z_aioe"
+   },
+   {
+    "x": "z_aioe",
+    "coef": -0.1123,
+    "se": 0.3119,
+    "p": 0.719,
+    "n": 722,
+    "r2": 0.0097,
+    "y": "g_emp",
+    "period": "pre",
+    "spec": "z_aioe + z_computer"
+   },
+   {
+    "x": "z_computer",
+    "coef": 0.4008,
+    "se": 0.3226,
+    "p": 0.2145,
+    "n": 722,
+    "r2": 0.0097,
+    "y": "g_emp",
+    "period": "pre",
+    "spec": "z_aioe + z_computer"
+   },
+   {
+    "x": "z_aioe",
+    "coef": -0.4703,
+    "se": 0.2892,
+    "p": 0.1044,
+    "n": 722,
+    "r2": 0.13,
+    "y": "g_emp",
+    "period": "pre",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_computer",
+    "coef": -0.1499,
+    "se": 0.2743,
+    "p": 0.5849,
+    "n": 722,
+    "r2": 0.13,
+    "y": "g_emp",
+    "period": "pre",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_lw",
+    "coef": 1.405,
+    "se": 0.3032,
+    "p": 0.0,
+    "n": 722,
+    "r2": 0.13,
+    "y": "g_emp",
+    "period": "pre",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_aioe",
+    "coef": -0.521,
+    "se": 0.0647,
+    "p": 0.0,
+    "n": 729,
+    "r2": 0.2302,
+    "y": "g_wage",
+    "period": "pre",
+    "spec": "z_aioe"
+   },
+   {
+    "x": "z_aioe",
+    "coef": -0.094,
+    "se": 0.1014,
+    "p": 0.3544,
+    "n": 722,
+    "r2": 0.311,
+    "y": "g_wage",
+    "period": "pre",
+    "spec": "z_aioe + z_computer"
+   },
+   {
+    "x": "z_computer",
+    "coef": -0.5249,
+    "se": 0.1099,
+    "p": 0.0,
+    "n": 722,
+    "r2": 0.311,
+    "y": "g_wage",
+    "period": "pre",
+    "spec": "z_aioe + z_computer"
+   },
+   {
+    "x": "z_aioe",
+    "coef": 0.0672,
+    "se": 0.0738,
+    "p": 0.3629,
+    "n": 722,
+    "r2": 0.5222,
+    "y": "g_wage",
+    "period": "pre",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_computer",
+    "coef": -0.2769,
+    "se": 0.0746,
+    "p": 0.0002,
+    "n": 722,
+    "r2": 0.5222,
+    "y": "g_wage",
+    "period": "pre",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_lw",
+    "coef": -0.6327,
+    "se": 0.0847,
+    "p": 0.0,
+    "n": 722,
+    "r2": 0.5222,
+    "y": "g_wage",
+    "period": "pre",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_aioe",
+    "coef": 0.0562,
+    "se": 0.2449,
+    "p": 0.8185,
+    "n": 729,
+    "r2": 0.0003,
+    "y": "g_emp",
+    "period": "post",
+    "spec": "z_aioe"
+   },
+   {
+    "x": "z_aioe",
+    "coef": 0.5092,
+    "se": 0.3307,
+    "p": 0.124,
+    "n": 722,
+    "r2": 0.0087,
+    "y": "g_emp",
+    "period": "post",
+    "spec": "z_aioe + z_computer"
+   },
+   {
+    "x": "z_computer",
+    "coef": -0.5899,
+    "se": 0.3987,
+    "p": 0.1394,
+    "n": 722,
+    "r2": 0.0087,
+    "y": "g_emp",
+    "period": "post",
+    "spec": "z_aioe + z_computer"
+   },
+   {
+    "x": "z_aioe",
+    "coef": 0.2272,
+    "se": 0.3825,
+    "p": 0.5526,
+    "n": 722,
+    "r2": 0.0536,
+    "y": "g_emp",
+    "period": "post",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_computer",
+    "coef": -0.925,
+    "se": 0.3867,
+    "p": 0.017,
+    "n": 722,
+    "r2": 0.0536,
+    "y": "g_emp",
+    "period": "post",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_lw",
+    "coef": 0.9537,
+    "se": 0.3668,
+    "p": 0.0095,
+    "n": 722,
+    "r2": 0.0536,
+    "y": "g_emp",
+    "period": "post",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_aioe",
+    "coef": -0.3851,
+    "se": 0.0661,
+    "p": 0.0,
+    "n": 729,
+    "r2": 0.115,
+    "y": "g_wage",
+    "period": "post",
+    "spec": "z_aioe"
+   },
+   {
+    "x": "z_aioe",
+    "coef": -0.371,
+    "se": 0.1065,
+    "p": 0.0005,
+    "n": 722,
+    "r2": 0.1098,
+    "y": "g_wage",
+    "period": "post",
+    "spec": "z_aioe + z_computer"
+   },
+   {
+    "x": "z_computer",
+    "coef": 0.0021,
+    "se": 0.1027,
+    "p": 0.9833,
+    "n": 722,
+    "r2": 0.1098,
+    "y": "g_wage",
+    "period": "post",
+    "spec": "z_aioe + z_computer"
+   },
+   {
+    "x": "z_aioe",
+    "coef": -0.2513,
+    "se": 0.1053,
+    "p": 0.0173,
+    "n": 722,
+    "r2": 0.1903,
+    "y": "g_wage",
+    "period": "post",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_computer",
+    "coef": 0.1444,
+    "se": 0.0884,
+    "p": 0.1029,
+    "n": 722,
+    "r2": 0.1903,
+    "y": "g_wage",
+    "period": "post",
+    "spec": "z_aioe + z_computer + z_lw"
+   },
+   {
+    "x": "z_lw",
+    "coef": -0.4048,
+    "se": 0.0993,
+    "p": 0.0001,
+    "n": 722,
+    "r2": 0.1903,
+    "y": "g_wage",
+    "period": "post",
+    "spec": "z_aioe + z_computer + z_lw"
+   }
+  ],
+  "most_exposed": [
+   {
+    "title": "Accountants and Auditors",
+    "aioe": 1.48,
+    "emp_2014": 1187310.0,
+    "emp_2022": 1402420.0,
+    "emp_2025": 1449500.0,
+    "g_emp_pre": 2.08,
+    "g_emp_post": 1.1,
+    "g_wage_pre": -0.61,
+    "g_wage_post": 0.63
+   },
+   {
+    "title": "Education Administrators, Postsecondary",
+    "aioe": 1.46,
+    "emp_2014": 131070.0,
+    "emp_2022": 167060.0,
+    "emp_2025": 180470.0,
+    "g_emp_pre": 3.03,
+    "g_emp_post": 2.57,
+    "g_wage_pre": -1.12,
+    "g_wage_post": 0.82
+   },
+   {
+    "title": "Clinical and Counseling Psychologists (and related)",
+    "aioe": 1.46,
+    "emp_2014": 104730.0,
+    "emp_2022": 123130.0,
+    "emp_2025": 139930.0,
+    "g_emp_pre": 2.02,
+    "g_emp_post": 4.26,
+    "g_wage_pre": 0.51,
+    "g_wage_post": 1.4
+   },
+   {
+    "title": "Financial Managers",
+    "aioe": 1.45,
+    "emp_2014": 518030.0,
+    "emp_2022": 740780.0,
+    "emp_2025": 841710.0,
+    "g_emp_pre": 4.47,
+    "g_emp_post": 4.26,
+    "g_wage_pre": 0.39,
+    "g_wage_post": 1.63
+   },
+   {
+    "title": "Management Analysts",
+    "aioe": 1.43,
+    "emp_2014": 587450.0,
+    "emp_2022": 808860.0,
+    "emp_2025": 898280.0,
+    "g_emp_pre": 4.0,
+    "g_emp_post": 3.5,
+    "g_wage_pre": -0.88,
+    "g_wage_post": 0.47
+   },
+   {
+    "title": "Market Research Analysts and Marketing Specialists",
+    "aioe": 1.43,
+    "emp_2014": 468160.0,
+    "emp_2022": 798620.0,
+    "emp_2025": 899580.0,
+    "g_emp_pre": 6.68,
+    "g_emp_post": 3.97,
+    "g_wage_pre": -0.92,
+    "g_wage_post": 1.89
+   },
+   {
+    "title": "Personal Financial Advisors",
+    "aioe": 1.4,
+    "emp_2014": 196490.0,
+    "emp_2022": 283060.0,
+    "emp_2025": 266800.0,
+    "g_emp_pre": 4.56,
+    "g_emp_post": -1.97,
+    "g_wage_pre": 0.38,
+    "g_wage_post": 1.97
+   },
+   {
+    "title": "Operations Research Analysts",
+    "aioe": 1.4,
+    "emp_2014": 86950.0,
+    "emp_2022": 105080.0,
+    "emp_2025": 108510.0,
+    "g_emp_pre": 2.37,
+    "g_emp_post": 1.07,
+    "g_wage_pre": -0.85,
+    "g_wage_post": -0.98
+   },
+   {
+    "title": "Loan Officers",
+    "aioe": 1.39,
+    "emp_2014": 300580.0,
+    "emp_2022": 345550.0,
+    "emp_2025": 274330.0,
+    "g_emp_pre": 1.74,
+    "g_emp_post": -7.69,
+    "g_wage_pre": -0.99,
+    "g_wage_post": -0.91
+   },
+   {
+    "title": "Financial and Investment Analysts (and related)",
+    "aioe": 1.37,
+    "emp_2014": 400070.0,
+    "emp_2022": 474190.0,
+    "emp_2025": 557960.0,
+    "g_emp_pre": 2.12,
+    "g_emp_post": 5.42,
+    "g_wage_pre": -0.27,
+    "g_wage_post": 0.57
+   },
+   {
+    "title": "Cost Estimators",
+    "aioe": 1.37,
+    "emp_2014": 209130.0,
+    "emp_2022": 225310.0,
+    "emp_2025": 224220.0,
+    "g_emp_pre": 0.93,
+    "g_emp_post": -0.16,
+    "g_wage_pre": -0.45,
+    "g_wage_post": 1.24
+   },
+   {
+    "title": "Loan Interviewers and Clerks",
+    "aioe": 1.36,
+    "emp_2014": 212440.0,
+    "emp_2022": 242630.0,
+    "emp_2025": 164790.0,
+    "g_emp_pre": 1.66,
+    "g_emp_post": -12.9,
+    "g_wage_pre": -0.1,
+    "g_wage_post": 1.57
+   }
+  ]
+ }
+}

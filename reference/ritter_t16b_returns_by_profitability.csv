@@ -1,0 +1,10 @@
+# Table 16b, Long-run returns on IPOs by profitability, 1980-2024 IPOs, returns to 31 Dec 2025 (updated 16 Feb 2026). Source: Jay R. Ritter, 'Initial Public Offerings: Updated Statistics', https://site.warrington.ufl.edu/ritter/files/IPO-Statistics.pdf (version dated 5 Nov 2026)
+# Columns: average first-day return; average 3-year buy-and-hold return (raw, market-adjusted, style-adjusted), all in %; sales in 2025 dollars; EPS is pre-IPO LTM
+profitability,sales_group,n_ipos,first_day_pct,bhr3_raw_pct,bhr3_market_adj_pct,bhr3_style_adj_pct
+Unprofitable,All,3926,26.5,-0.5,-30.7,-23.4
+Profitable,All,5327,13.3,33.6,-13.0,1.8
+Unprofitable,Sales < $100m,2880,29.1,-10.3,-40.9,-29.6
+Profitable,Sales < $100m,2263,15.6,25.2,-25.9,-3.0
+Unprofitable,Sales > $100m,1046,19.4,26.2,-2.7,-6.6
+Profitable,Sales > $100m,3064,11.6,39.9,-3.4,5.4
+All,All,9253,18.9,19.1,-20.5,-8.9

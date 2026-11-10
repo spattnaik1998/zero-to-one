@@ -1,0 +1,61 @@
+sector,year,sm_int,rd_int,pct_firms_sm_above_rd
+Hardware and electronics,2011,14.3,13.9,53.6
+Hardware and electronics,2012,14.7,15.0,55.5
+Hardware and electronics,2013,14.4,14.6,58.3
+Hardware and electronics,2014,14.6,15.0,59.6
+Hardware and electronics,2015,14.5,15.0,59.3
+Hardware and electronics,2016,15.7,14.6,57.1
+Hardware and electronics,2017,15.3,14.9,57.1
+Hardware and electronics,2018,14.4,14.9,57.3
+Hardware and electronics,2019,15.7,15.7,52.2
+Hardware and electronics,2020,15.7,16.1,48.6
+Hardware and electronics,2021,15.9,15.1,57.3
+Hardware and electronics,2022,14.8,14.4,58.0
+Hardware and electronics,2023,14.5,14.6,55.4
+Hardware and electronics,2024,15.6,15.7,51.8
+Hardware and electronics,2025,15.3,16.4,49.1
+Other,2011,12.1,4.6,85.9
+Other,2012,13.5,5.2,84.6
+Other,2013,13.8,5.8,86.0
+Other,2014,13.9,5.5,84.4
+Other,2015,14.7,5.9,80.0
+Other,2016,14.6,5.9,78.0
+Other,2017,13.8,6.4,81.2
+Other,2018,14.7,5.9,77.9
+Other,2019,15.4,7.5,75.7
+Other,2020,15.8,8.1,73.2
+Other,2021,14.0,7.4,75.5
+Other,2022,14.1,7.5,79.7
+Other,2023,14.3,6.3,77.4
+Other,2024,14.4,6.8,78.6
+Other,2025,16.1,6.3,81.2
+"Pharma, biotech, medical",2011,24.8,7.7,85.5
+"Pharma, biotech, medical",2012,25.5,8.3,88.2
+"Pharma, biotech, medical",2013,24.8,8.1,93.8
+"Pharma, biotech, medical",2014,23.9,8.0,96.2
+"Pharma, biotech, medical",2015,29.1,8.7,93.2
+"Pharma, biotech, medical",2016,30.6,8.6,87.5
+"Pharma, biotech, medical",2017,26.5,10.2,89.7
+"Pharma, biotech, medical",2018,28.8,9.7,87.7
+"Pharma, biotech, medical",2019,30.6,11.6,82.4
+"Pharma, biotech, medical",2020,28.3,12.3,80.5
+"Pharma, biotech, medical",2021,28.1,11.6,79.3
+"Pharma, biotech, medical",2022,33.2,11.8,82.1
+"Pharma, biotech, medical",2023,32.6,10.5,91.9
+"Pharma, biotech, medical",2024,33.3,10.1,89.3
+"Pharma, biotech, medical",2025,30.7,9.8,87.2
+Software and internet,2011,27.6,15.5,81.5
+Software and internet,2012,28.4,17.1,79.9
+Software and internet,2013,29.0,16.9,79.6
+Software and internet,2014,32.1,17.4,78.1
+Software and internet,2015,30.7,18.5,74.5
+Software and internet,2016,31.1,19.1,78.3
+Software and internet,2017,31.0,18.5,77.7
+Software and internet,2018,29.9,19.1,76.2
+Software and internet,2019,30.2,19.3,75.2
+Software and internet,2020,28.6,20.1,73.5
+Software and internet,2021,29.1,21.3,72.1
+Software and internet,2022,30.5,20.9,70.1
+Software and internet,2023,29.5,20.0,70.6
+Software and internet,2024,28.0,19.8,68.0
+Software and internet,2025,25.8,20.0,67.2

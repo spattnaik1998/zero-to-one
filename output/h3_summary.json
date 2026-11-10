@@ -1,0 +1,378 @@
+{
+ "n_firm_years": 39363,
+ "top_decile": {
+  "base 2011-2014|k=1": {
+   "still_top_decile": 0.554,
+   "below_median": 0.113,
+   "gone": 0.079
+  },
+  "base 2011-2014|k=3": {
+   "still_top_decile": 0.349,
+   "below_median": 0.142,
+   "gone": 0.177
+  },
+  "base 2011-2014|k=5": {
+   "still_top_decile": 0.279,
+   "below_median": 0.175,
+   "gone": 0.264
+  },
+  "base 2011-2014|k=10": {
+   "still_top_decile": 0.167,
+   "below_median": 0.141,
+   "gone": 0.424
+  },
+  "base 2015+|k=1": {
+   "still_top_decile": 0.506,
+   "below_median": 0.117,
+   "gone": 0.072
+  },
+  "base 2015+|k=3": {
+   "still_top_decile": 0.324,
+   "below_median": 0.163,
+   "gone": 0.168
+  },
+  "base 2015+|k=5": {
+   "still_top_decile": 0.289,
+   "below_median": 0.145,
+   "gone": 0.223
+  },
+  "base 2015+|k=10": {
+   "still_top_decile": 0.172,
+   "below_median": 0.176,
+   "gone": 0.378
+  }
+ },
+ "reversion_slopes": {
+  "base 2011-2014|k=1": [
+   0.711,
+   0.018
+  ],
+  "base 2015+|k=1": [
+   0.698,
+   0.011
+  ],
+  "base 2011-2014|k=3": [
+   0.553,
+   0.024
+  ],
+  "base 2015+|k=3": [
+   0.486,
+   0.017
+  ],
+  "base 2011-2014|k=5": [
+   0.403,
+   0.029
+  ],
+  "base 2015+|k=5": [
+   0.45,
+   0.021
+  ],
+  "base 2011-2014|k=10": [
+   0.3,
+   0.035
+  ],
+  "base 2015+|k=10": [
+   0.273,
+   0.054
+  ]
+ },
+ "leaders_by_type": [
+  {
+   "dominant": "False",
+   "still leader": 59.5,
+   "lost lead": 25.1,
+   "gone": 15.4
+  },
+  {
+   "dominant": "True",
+   "still leader": 75.5,
+   "lost lead": 12.8,
+   "gone": 11.7
+  }
+ ],
+ "leaders_pre_post": [
+  {
+   "period": "base 2011-2014",
+   "gone": 18.4,
+   "lost lead": 17.9,
+   "still leader": 63.7
+  },
+  {
+   "period": "base 2015-2020",
+   "gone": 10.3,
+   "lost lead": 20.4,
+   "still leader": 69.3
+  }
+ ],
+ "leaders_n": 2099,
+ "top20_2014_still": 8,
+ "end_year": 2025,
+ "top20_new_entrants": [
+  "Nvidia Corp (1)",
+  "Amazon.Com, Inc. (4)",
+  "Meta Platforms, Inc. (6)",
+  "Broadcom Inc. (7)",
+  "Tesla, Inc. (9)",
+  "Eli Lilly And Company (10)",
+  "Visa Inc. (12)",
+  "Netflix, Inc. (13)",
+  "Mastercard Incorporated (14)",
+  "Costco Wholesale Corp /N (15)",
+  "Walmart Inc. (17)",
+  "Home Depot, Inc. (18)"
+ ],
+ "top20_2014": [
+  {
+   "firm": "Apple Inc.",
+   "rank_2014": 1.0,
+   "rank_2025": 3.0
+  },
+  {
+   "firm": "Exxon Mobil Corporation",
+   "rank_2014": 2.0,
+   "rank_2025": 16.0
+  },
+  {
+   "firm": "MICROSOFT CORPORATION",
+   "rank_2014": 3.0,
+   "rank_2025": 2.0
+  },
+  {
+   "firm": "Johnson & Johnson",
+   "rank_2014": 4.0,
+   "rank_2025": 19.0
+  },
+  {
+   "firm": "Alphabet Inc.",
+   "rank_2014": 5.0,
+   "rank_2025": 5.0
+  },
+  {
+   "firm": "WELLS FARGO & COMPANY/MN",
+   "rank_2014": 6.0,
+   "rank_2025": 31.0
+  },
+  {
+   "firm": "GENERAL ELECTRIC COMPANY",
+   "rank_2014": 7.0,
+   "rank_2025": 30.0
+  },
+  {
+   "firm": "Chevron Corp",
+   "rank_2014": 8.0,
+   "rank_2025": 32.0
+  },
+  {
+   "firm": "PROCTER & GAMBLE CO",
+   "rank_2014": 9.0,
+   "rank_2025": 21.0
+  },
+  {
+   "firm": "BERKSHIRE HATHAWAY INC",
+   "rank_2014": 10.0,
+   "rank_2025": 8.0
+  },
+  {
+   "firm": "JPMorgan Chase & Co",
+   "rank_2014": 11.0,
+   "rank_2025": 11.0
+  },
+  {
+   "firm": "Verizon Communications Inc.",
+   "rank_2014": 12.0,
+   "rank_2025": 48.0
+  },
+  {
+   "firm": "PFIZER INC",
+   "rank_2014": 13.0,
+   "rank_2025": 73.0
+  },
+  {
+   "firm": "COCA COLA CO",
+   "rank_2014": 14.0,
+   "rank_2025": 24.0
+  },
+  {
+   "firm": "AT&T INC.",
+   "rank_2014": 15.0,
+   "rank_2025": 40.0
+  },
+  {
+   "firm": "INTERNATIONAL BUSINESS MACHINES CORPORATION",
+   "rank_2014": 16.0,
+   "rank_2025": 29.0
+  },
+  {
+   "firm": "Merck\u00c2\u00a0& Co., Inc.",
+   "rank_2014": 17.0,
+   "rank_2025": 41.0
+  },
+  {
+   "firm": "Bank of America Corporation",
+   "rank_2014": 18.0,
+   "rank_2025": 20.0
+  },
+  {
+   "firm": "INTEL CORPORATION",
+   "rank_2014": 19.0,
+   "rank_2025": 106.0
+  },
+  {
+   "firm": "SLB LIMITED/NV",
+   "rank_2014": 20.0,
+   "rank_2025": 221.0
+  }
+ ],
+ "top_survival": [
+  {
+   "base": 2011,
+   "top20_survive": 0.65,
+   "top10_survive": 0.6
+  },
+  {
+   "base": 2012,
+   "top20_survive": 0.8,
+   "top10_survive": 0.5
+  },
+  {
+   "base": 2013,
+   "top20_survive": 0.6,
+   "top10_survive": 0.4
+  },
+  {
+   "base": 2014,
+   "top20_survive": 0.7,
+   "top10_survive": 0.7
+  },
+  {
+   "base": 2015,
+   "top20_survive": 0.55,
+   "top10_survive": 0.6
+  },
+  {
+   "base": 2016,
+   "top20_survive": 0.6,
+   "top10_survive": 0.7
+  },
+  {
+   "base": 2017,
+   "top20_survive": 0.65,
+   "top10_survive": 0.7
+  },
+  {
+   "base": 2018,
+   "top20_survive": 0.65,
+   "top10_survive": 0.6
+  },
+  {
+   "base": 2019,
+   "top20_survive": 0.7,
+   "top10_survive": 0.7
+  },
+  {
+   "base": 2020,
+   "top20_survive": 0.7,
+   "top10_survive": 0.6
+  }
+ ],
+ "payback_by_group": [
+  {
+   "tech": "other",
+   "payback": 0.74,
+   "pv_payback": 0.469,
+   "terminal_share": 0.531,
+   "value_multiple": 1.36,
+   "n": 74
+  },
+  {
+   "tech": "tech",
+   "payback": 1.038,
+   "pv_payback": 0.666,
+   "terminal_share": 0.334,
+   "value_multiple": 2.049,
+   "n": 15
+  }
+ ],
+ "payback_top10": [
+  {
+   "firm": "Apple Inc.",
+   "value_2014_bn": 462.52,
+   "pv_payback": 1.17,
+   "terminal_share": -0.17,
+   "value_multiple": 7.03,
+   "tech": true
+  },
+  {
+   "firm": "Exxon Mobil Corporation",
+   "value_2014_bn": 429.0,
+   "pv_payback": 0.3,
+   "terminal_share": 0.7,
+   "value_multiple": 1.07,
+   "tech": false
+  },
+  {
+   "firm": "MICROSOFT CORPORATION",
+   "value_2014_bn": 365.31,
+   "pv_payback": 0.85,
+   "terminal_share": 0.15,
+   "value_multiple": 9.85,
+   "tech": true
+  },
+  {
+   "firm": "Johnson & Johnson",
+   "value_2014_bn": 296.0,
+   "pv_payback": 0.44,
+   "terminal_share": 0.56,
+   "value_multiple": 1.24,
+   "tech": false
+  },
+  {
+   "firm": "Alphabet Inc.",
+   "value_2014_bn": 290.0,
+   "pv_payback": 1.01,
+   "terminal_share": -0.01,
+   "value_multiple": 6.55,
+   "tech": true
+  },
+  {
+   "firm": "GENERAL ELECTRIC COMPANY",
+   "value_2014_bn": 261.1,
+   "pv_payback": 0.08,
+   "terminal_share": 0.92,
+   "value_multiple": 1.03,
+   "tech": false
+  },
+  {
+   "firm": "Chevron Corp",
+   "value_2014_bn": 247.91,
+   "pv_payback": 0.28,
+   "terminal_share": 0.72,
+   "value_multiple": 1.0,
+   "tech": false
+  },
+  {
+   "firm": "PROCTER & GAMBLE CO",
+   "value_2014_bn": 246.0,
+   "pv_payback": 0.37,
+   "terminal_share": 0.63,
+   "value_multiple": 1.35,
+   "tech": false
+  },
+  {
+   "firm": "Verizon Communications Inc.",
+   "value_2014_bn": 202.8,
+   "pv_payback": 0.93,
+   "terminal_share": 0.07,
+   "value_multiple": 0.9,
+   "tech": true
+  },
+  {
+   "firm": "PFIZER INC",
+   "value_2014_bn": 188.0,
+   "pv_payback": 0.55,
+   "terminal_share": 0.45,
+   "value_multiple": 0.73,
+   "tech": false
+  }
+ ]
+}

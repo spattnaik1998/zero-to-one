@@ -1,0 +1,292 @@
+{
+ "productivity": [
+  {
+   "period": "1948-1973",
+   "start": 1948,
+   "end": 1973,
+   "growth_pct_per_year": 2.795,
+   "measure": "Labour productivity (nonfarm business)"
+  },
+  {
+   "period": "1973-1995",
+   "start": 1973,
+   "end": 1995,
+   "growth_pct_per_year": 1.436,
+   "measure": "Labour productivity (nonfarm business)"
+  },
+  {
+   "period": "1995-2004",
+   "start": 1995,
+   "end": 2004,
+   "growth_pct_per_year": 3.086,
+   "measure": "Labour productivity (nonfarm business)"
+  },
+  {
+   "period": "2004-2014",
+   "start": 2004,
+   "end": 2014,
+   "growth_pct_per_year": 1.576,
+   "measure": "Labour productivity (nonfarm business)"
+  },
+  {
+   "period": "2014-2025",
+   "start": 2014,
+   "end": 2025,
+   "growth_pct_per_year": 1.868,
+   "measure": "Labour productivity (nonfarm business)"
+  },
+  {
+   "period": "1954-1973",
+   "start": 1954,
+   "end": 1973,
+   "growth_pct_per_year": 1.092,
+   "measure": "Total factor productivity (Penn World Table)"
+  },
+  {
+   "period": "1973-1995",
+   "start": 1973,
+   "end": 1995,
+   "growth_pct_per_year": 0.259,
+   "measure": "Total factor productivity (Penn World Table)"
+  },
+  {
+   "period": "1995-2004",
+   "start": 1995,
+   "end": 2004,
+   "growth_pct_per_year": 1.201,
+   "measure": "Total factor productivity (Penn World Table)"
+  },
+  {
+   "period": "2004-2014",
+   "start": 2004,
+   "end": 2014,
+   "growth_pct_per_year": 0.236,
+   "measure": "Total factor productivity (Penn World Table)"
+  },
+  {
+   "period": "2014-2023",
+   "start": 2014,
+   "end": 2023,
+   "growth_pct_per_year": 0.564,
+   "measure": "Total factor productivity (Penn World Table)"
+  }
+ ],
+ "productivity_recent": [
+  {
+   "period": "2019-2025",
+   "start": 2019,
+   "end": 2025,
+   "growth_pct_per_year": 2.274,
+   "measure": "Labour productivity (nonfarm business)"
+  },
+  {
+   "period": "2022-2025",
+   "start": 2022,
+   "end": 2025,
+   "growth_pct_per_year": 2.556,
+   "measure": "Labour productivity (nonfarm business)"
+  }
+ ],
+ "productivity_post2014_ex_covid": [
+  {
+   "period": "2014-2025 excl. growth in 2020 and 2021",
+   "start": 2014,
+   "end": 2025,
+   "growth_pct_per_year": 1.446,
+   "measure": "Labour productivity (nonfarm business)"
+  }
+ ],
+ "bits_vs_atoms": [
+  {
+   "item": "Airline fares",
+   "group": "atoms",
+   "first_year": 1963,
+   "real_change_2000_2014_pct_yr": -0.48,
+   "real_change_2014_2025_pct_yr": -4.365,
+   "cumulative_2014_2025_pct": -38.795
+  },
+  {
+   "item": "New vehicles",
+   "group": "atoms",
+   "first_year": 1947,
+   "real_change_2000_2014_pct_yr": -2.077,
+   "real_change_2014_2025_pct_yr": -0.982,
+   "cumulative_2014_2025_pct": -10.285
+  },
+  {
+   "item": "College tuition and fees",
+   "group": "atoms",
+   "first_year": 1997,
+   "real_change_2000_2014_pct_yr": 3.707,
+   "real_change_2014_2025_pct_yr": -0.707,
+   "cumulative_2014_2025_pct": -7.506
+  },
+  {
+   "item": "Food at home",
+   "group": "atoms",
+   "first_year": 1947,
+   "real_change_2000_2014_pct_yr": 0.263,
+   "real_change_2014_2025_pct_yr": -0.352,
+   "cumulative_2014_2025_pct": -3.8
+  },
+  {
+   "item": "Medical care",
+   "group": "atoms",
+   "first_year": 1947,
+   "real_change_2000_2014_pct_yr": 1.397,
+   "real_change_2014_2025_pct_yr": -0.184,
+   "cumulative_2014_2025_pct": -2.008
+  },
+  {
+   "item": "Electricity",
+   "group": "atoms",
+   "first_year": 1913,
+   "real_change_2000_2014_pct_yr": 1.176,
+   "real_change_2014_2025_pct_yr": 0.289,
+   "cumulative_2014_2025_pct": 3.229
+  },
+  {
+   "item": "Rent of primary residence",
+   "group": "atoms",
+   "first_year": 1914,
+   "real_change_2000_2014_pct_yr": 0.632,
+   "real_change_2014_2025_pct_yr": 1.342,
+   "cumulative_2014_2025_pct": 15.798
+  },
+  {
+   "item": "Televisions",
+   "group": "bits",
+   "first_year": 1997,
+   "real_change_2000_2014_pct_yr": -18.469,
+   "real_change_2014_2025_pct_yr": -14.256,
+   "cumulative_2014_2025_pct": -81.583
+  },
+  {
+   "item": "Computer software and accessories",
+   "group": "bits",
+   "first_year": 1997,
+   "real_change_2000_2014_pct_yr": -7.919,
+   "real_change_2014_2025_pct_yr": -6.708,
+   "cumulative_2014_2025_pct": -53.411
+  },
+  {
+   "item": "Computers and peripherals",
+   "group": "bits",
+   "first_year": 1997,
+   "real_change_2000_2014_pct_yr": -16.268,
+   "real_change_2014_2025_pct_yr": -6.35,
+   "cumulative_2014_2025_pct": -51.406
+  },
+  {
+   "item": "Wireless phone services",
+   "group": "bits",
+   "first_year": 1997,
+   "real_change_2000_2014_pct_yr": -4.189,
+   "real_change_2014_2025_pct_yr": -4.595,
+   "cumulative_2014_2025_pct": -40.395
+  }
+ ],
+ "group_avg": {
+  "atoms": {
+   "real_change_2000_2014_pct_yr": 0.66,
+   "real_change_2014_2025_pct_yr": -0.708
+  },
+  "bits": {
+   "real_change_2000_2014_pct_yr": -11.712,
+   "real_change_2014_2025_pct_yr": -7.977
+  }
+ },
+ "missing": [],
+ "investment_shares": {
+  "1950": {
+   "Structures": 33.17,
+   "Equipment": 59.3,
+   "Intellectual property products": 7.53
+  },
+  "1970": {
+   "Structures": 32.32,
+   "Equipment": 53.28,
+   "Intellectual property products": 14.4
+  },
+  "1990": {
+   "Structures": 27.45,
+   "Equipment": 50.31,
+   "Intellectual property products": 22.24
+  },
+  "2000": {
+   "Structures": 21.42,
+   "Equipment": 51.13,
+   "Intellectual property products": 27.45
+  },
+  "2014": {
+   "Structures": 23.69,
+   "Equipment": 45.73,
+   "Intellectual property products": 30.57
+  },
+  "2025": {
+   "Structures": 21.93,
+   "Equipment": 38.51,
+   "Intellectual property products": 39.56
+  }
+ },
+ "life_expectancy": [
+  {
+   "period": "1960-1970",
+   "years_gained": 1.037,
+   "per_decade": 1.037
+  },
+  {
+   "period": "1970-1980",
+   "years_gained": 2.802,
+   "per_decade": 2.802
+  },
+  {
+   "period": "1980-1990",
+   "years_gained": 1.605,
+   "per_decade": 1.605
+  },
+  {
+   "period": "1990-2000",
+   "years_gained": 1.422,
+   "per_decade": 1.422
+  },
+  {
+   "period": "2000-2010",
+   "years_gained": 1.905,
+   "per_decade": 1.905
+  },
+  {
+   "period": "2010-2019",
+   "years_gained": 0.246,
+   "per_decade": 0.274
+  },
+  {
+   "period": "2014-2019",
+   "years_gained": -0.054,
+   "per_decade": -0.107
+  },
+  {
+   "period": "2019-2021",
+   "years_gained": -2.459,
+   "per_decade": -12.293
+  },
+  {
+   "period": "2021-2024",
+   "years_gained": 2.561,
+   "per_decade": 8.537
+  },
+  {
+   "period": "2014-2024",
+   "years_gained": 0.049,
+   "per_decade": 0.049
+  }
+ ],
+ "le_latest": [
+  2024,
+  78.89
+ ],
+ "le_2014_2019": [
+  78.84,
+  78.79
+ ]
+}

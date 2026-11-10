@@ -1,0 +1,226 @@
+{
+ "census_cross_section": [
+  {
+   "year": 2017,
+   "x": "log_hhi",
+   "coef": -0.0067,
+   "se": 0.0026,
+   "p": 0.0097,
+   "n": 360,
+   "spearman": -0.1136
+  },
+  {
+   "year": 2017,
+   "x": "cr4",
+   "coef": 0.0003,
+   "se": 0.0003,
+   "p": 0.3431,
+   "n": 360,
+   "spearman": 0.0442
+  },
+  {
+   "year": 2022,
+   "x": "log_hhi",
+   "coef": -0.0063,
+   "se": 0.0028,
+   "p": 0.0239,
+   "n": 330,
+   "spearman": -0.0922
+  },
+  {
+   "year": 2022,
+   "x": "cr4",
+   "coef": 0.0005,
+   "se": 0.0004,
+   "p": 0.1385,
+   "n": 330,
+   "spearman": 0.0905
+  }
+ ],
+ "census_first_diff": [
+  {
+   "x": "d_cr4",
+   "coef": -0.0,
+   "se": 0.0004,
+   "p": 0.9499,
+   "n": 330
+  },
+  {
+   "x": "d_log_hhi",
+   "coef": -0.0015,
+   "se": 0.0014,
+   "p": 0.2892,
+   "n": 330
+  }
+ ],
+ "n_firm_years": 38785,
+ "n_firms": 4831,
+ "opm_share": {
+  "coef": 0.2367,
+  "se": 0.0122,
+  "p": 0.0
+ },
+ "opm_leader": {
+  "coef": 0.0817,
+  "se": 0.0057,
+  "p": 0.0
+ },
+ "opm_dominant": {
+  "coef": 0.0897,
+  "se": 0.0071,
+  "p": 0.0
+ },
+ "opm_share_pre": {
+  "coef": 0.1535,
+  "se": 0.0128,
+  "p": 0.0
+ },
+ "opm_share_post_interaction": {
+  "coef": 0.1158,
+  "se": 0.0136,
+  "p": 0.0
+ },
+ "opm_share_given_size_sector": {
+  "coef": -0.0778,
+  "se": 0.0132,
+  "p": 0.0
+ },
+ "opm_size_given_share_sector": {
+  "coef": 0.0449,
+  "se": 0.0017,
+  "p": 0.0
+ },
+ "roa_share": {
+  "coef": 0.1546,
+  "se": 0.0086,
+  "p": 0.0
+ },
+ "roa_leader": {
+  "coef": 0.0528,
+  "se": 0.0038,
+  "p": 0.0
+ },
+ "roa_share_given_size_sector": {
+  "coef": -0.0423,
+  "se": 0.0089,
+  "p": 0.0
+ },
+ "share_bins": [
+  {
+   "share_bin": "<1%",
+   "n": 16608,
+   "mean_margin": -0.046,
+   "median_margin_vs_industry": -0.016
+  },
+  {
+   "share_bin": "1-2%",
+   "n": 3978,
+   "mean_margin": 0.06,
+   "median_margin_vs_industry": 0.02
+  },
+  {
+   "share_bin": "2-5%",
+   "n": 5278,
+   "mean_margin": 0.073,
+   "median_margin_vs_industry": 0.021
+  },
+  {
+   "share_bin": "5-10%",
+   "n": 3844,
+   "mean_margin": 0.082,
+   "median_margin_vs_industry": 0.027
+  },
+  {
+   "share_bin": "10-20%",
+   "n": 3472,
+   "mean_margin": 0.086,
+   "median_margin_vs_industry": 0.031
+  },
+  {
+   "share_bin": "20-35%",
+   "n": 2569,
+   "mean_margin": 0.091,
+   "median_margin_vs_industry": 0.028
+  },
+  {
+   "share_bin": "35-50%",
+   "n": 1362,
+   "mean_margin": 0.105,
+   "median_margin_vs_industry": 0.045
+  },
+  {
+   "share_bin": "50-75%",
+   "n": 1029,
+   "mean_margin": 0.1,
+   "median_margin_vs_industry": 0.047
+  },
+  {
+   "share_bin": ">75%",
+   "n": 645,
+   "mean_margin": 0.116,
+   "median_margin_vs_industry": 0.064
+  }
+ ],
+ "airlines_vs_bigtech_margin": {
+  "2011": {
+   "airlines_op_margin_pct": 4.9,
+   "bigtech_op_margin_pct": 28.1
+  },
+  "2012": {
+   "airlines_op_margin_pct": 4.2,
+   "bigtech_op_margin_pct": 26.6
+  },
+  "2013": {
+   "airlines_op_margin_pct": 6.7,
+   "bigtech_op_margin_pct": 24.9
+  },
+  "2014": {
+   "airlines_op_margin_pct": 8.3,
+   "bigtech_op_margin_pct": 23.5
+  },
+  "2015": {
+   "airlines_op_margin_pct": 16.9,
+   "bigtech_op_margin_pct": 22.2
+  },
+  "2016": {
+   "airlines_op_margin_pct": 14.8,
+   "bigtech_op_margin_pct": 22.5
+  },
+  "2017": {
+   "airlines_op_margin_pct": 12.4,
+   "bigtech_op_margin_pct": 21.5
+  },
+  "2018": {
+   "airlines_op_margin_pct": 9.3,
+   "bigtech_op_margin_pct": 21.3
+  },
+  "2019": {
+   "airlines_op_margin_pct": 11.0,
+   "bigtech_op_margin_pct": 20.0
+  },
+  "2020": {
+   "airlines_op_margin_pct": -51.8,
+   "bigtech_op_margin_pct": 20.2
+  },
+  "2021": {
+   "airlines_op_margin_pct": 2.1,
+   "bigtech_op_margin_pct": 23.9
+  },
+  "2022": {
+   "airlines_op_margin_pct": 3.7,
+   "bigtech_op_margin_pct": 21.2
+  },
+  "2023": {
+   "airlines_op_margin_pct": 5.6,
+   "bigtech_op_margin_pct": 23.0
+  },
+  "2024": {
+   "airlines_op_margin_pct": 5.6,
+   "bigtech_op_margin_pct": 27.0
+  },
+  "2025": {
+   "airlines_op_margin_pct": 5.4,
+   "bigtech_op_margin_pct": 27.4
+  }
+ }
+}

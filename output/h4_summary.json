@@ -1,0 +1,292 @@
+{
+ "window": [
+  "2014-09-16",
+  "2026-11-06"
+ ],
+ "missing": [],
+ "scorecard": [
+  {
+   "name": "Alphabet",
+   "ticker": "GOOGL",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 9.766,
+   "cagr_pct": 20.65,
+   "spy_multiple": 4.497,
+   "vs_spy": 2.172,
+   "max_drawdown_pct": -44.32,
+   "note": "",
+   "group": "Monopolies and definite planners"
+  },
+  {
+   "name": "Meta",
+   "ticker": "META",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 8.097,
+   "cagr_pct": 18.801,
+   "spy_multiple": 4.497,
+   "vs_spy": 1.801,
+   "max_drawdown_pct": -76.736,
+   "note": "",
+   "group": "Monopolies and definite planners"
+  },
+  {
+   "name": "Apple",
+   "ticker": "AAPL",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 15.42,
+   "cagr_pct": 25.276,
+   "spy_multiple": 4.497,
+   "vs_spy": 3.429,
+   "max_drawdown_pct": -38.516,
+   "note": "",
+   "group": "Monopolies and definite planners"
+  },
+  {
+   "name": "Amazon",
+   "ticker": "AMZN",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 15.823,
+   "cagr_pct": 25.542,
+   "spy_multiple": 4.497,
+   "vs_spy": 3.519,
+   "max_drawdown_pct": -56.145,
+   "note": "",
+   "group": "Monopolies and definite planners"
+  },
+  {
+   "name": "Microsoft",
+   "ticker": "MSFT",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 13.481,
+   "cagr_pct": 23.897,
+   "spy_multiple": 4.497,
+   "vs_spy": 2.998,
+   "max_drawdown_pct": -37.149,
+   "note": "",
+   "group": "Monopolies and definite planners"
+  },
+  {
+   "name": "Tesla",
+   "ticker": "TSLA",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 20.608,
+   "cagr_pct": 28.305,
+   "spy_multiple": 4.497,
+   "vs_spy": 4.583,
+   "max_drawdown_pct": -73.632,
+   "note": "",
+   "group": "Monopolies and definite planners"
+  },
+  {
+   "name": "eBay + PayPal",
+   "ticker": "EBAY+PYPL",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 8.342,
+   "cagr_pct": 19.094,
+   "spy_multiple": 4.497,
+   "vs_spy": 1.855,
+   "max_drawdown_pct": -76.868,
+   "note": "price only (no dividends); PayPal added at the July 2015 spin-off",
+   "group": "Monopolies and definite planners"
+  },
+  {
+   "name": "LinkedIn",
+   "ticker": "LNKD",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 3.529,
+   "cagr_pct": 10.947,
+   "spy_multiple": 4.497,
+   "vs_spy": 0.785,
+   "max_drawdown_pct": -62.705,
+   "note": "acquired 08 Dec 2016: $196.00 cash",
+   "group": "Valued on distant cash flows"
+  },
+  {
+   "name": "Twitter",
+   "ticker": "TWTR",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 2.173,
+   "cagr_pct": 6.603,
+   "spy_multiple": 4.497,
+   "vs_spy": 0.483,
+   "max_drawdown_pct": -74.72,
+   "note": "acquired 27 Oct 2022: $54.20 cash",
+   "group": "Valued on distant cash flows"
+  },
+  {
+   "name": "Groupon",
+   "ticker": "GRPN",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 0.111,
+   "cagr_pct": -16.536,
+   "spy_multiple": 4.497,
+   "vs_spy": 0.025,
+   "max_drawdown_pct": -98.211,
+   "note": "",
+   "group": "Fast growth, doubtful durability"
+  },
+  {
+   "name": "Zynga",
+   "ticker": "ZNGA",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 5.169,
+   "cagr_pct": 14.49,
+   "spy_multiple": 4.497,
+   "vs_spy": 1.15,
+   "max_drawdown_pct": -52.627,
+   "note": "acquired 23 May 2022: $3.50 cash + 0.0406 TTWO",
+   "group": "Fast growth, doubtful durability"
+  },
+  {
+   "name": "US airlines (6, equal weight)",
+   "ticker": "AIRLINES",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 1.318,
+   "cagr_pct": 2.301,
+   "spy_multiple": 4.497,
+   "vs_spy": 0.293,
+   "max_drawdown_pct": -69.161,
+   "note": "6 carriers, equal weight",
+   "group": "Foils: airlines and the NYT"
+  },
+  {
+   "name": "New York Times",
+   "ticker": "NYT",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 6.455,
+   "cagr_pct": 16.604,
+   "spy_multiple": 4.497,
+   "vs_spy": 1.436,
+   "max_drawdown_pct": -49.933,
+   "note": "",
+   "group": "Foils: airlines and the NYT"
+  },
+  {
+   "name": "Palantir",
+   "ticker": "PLTR",
+   "start": "2020-09-30",
+   "end": "2026-11-06",
+   "multiple": 16.882,
+   "cagr_pct": 58.935,
+   "spy_multiple": 2.381,
+   "vs_spy": 7.092,
+   "max_drawdown_pct": -84.615,
+   "note": "",
+   "group": "Later addition (from listing)"
+  },
+  {
+   "name": "S&P 500 (SPY)",
+   "ticker": "SPY",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 4.497,
+   "cagr_pct": 13.183,
+   "spy_multiple": 4.497,
+   "vs_spy": 1.0,
+   "max_drawdown_pct": -33.717,
+   "note": "",
+   "group": "Benchmarks"
+  },
+  {
+   "name": "Nasdaq-100 (QQQ)",
+   "ticker": "QQQ",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 7.238,
+   "cagr_pct": 17.71,
+   "spy_multiple": 4.497,
+   "vs_spy": 1.61,
+   "max_drawdown_pct": -35.119,
+   "note": "",
+   "group": "Benchmarks"
+  }
+ ],
+ "groups": [
+  {
+   "name": "Monopolies and definite planners",
+   "ticker": "Monopolies and definite planners",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 13.077,
+   "cagr_pct": 23.587,
+   "spy_multiple": 4.497,
+   "vs_spy": 2.908,
+   "max_drawdown_pct": -55.549,
+   "note": "",
+   "group": "Monopolies and definite planners",
+   "n": "7"
+  },
+  {
+   "name": "Valued on distant cash flows",
+   "ticker": "Valued on distant cash flows",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 2.851,
+   "cagr_pct": 9.014,
+   "spy_multiple": 4.497,
+   "vs_spy": 0.634,
+   "max_drawdown_pct": -66.593,
+   "note": "",
+   "group": "Valued on distant cash flows",
+   "n": "2"
+  },
+  {
+   "name": "Fast growth, doubtful durability",
+   "ticker": "Fast growth, doubtful durability",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 2.64,
+   "cagr_pct": 8.326,
+   "spy_multiple": 4.497,
+   "vs_spy": 0.587,
+   "max_drawdown_pct": -56.027,
+   "note": "",
+   "group": "Fast growth, doubtful durability",
+   "n": "2"
+  },
+  {
+   "name": "Foils: airlines and the NYT",
+   "ticker": "Foils: airlines and the NYT",
+   "start": "2014-09-16",
+   "end": "2026-11-06",
+   "multiple": 3.887,
+   "cagr_pct": 11.832,
+   "spy_multiple": 4.497,
+   "vs_spy": 0.864,
+   "max_drawdown_pct": -48.296,
+   "note": "",
+   "group": "Foils: airlines and the NYT",
+   "n": "2"
+  }
+ ],
+ "deals_cash_alternative": [
+  {
+   "ticker": "LNKD",
+   "multiple": 0.923,
+   "vs_spy": 0.205
+  },
+  {
+   "ticker": "TWTR",
+   "multiple": 1.066,
+   "vs_spy": 0.237
+  },
+  {
+   "ticker": "ZNGA",
+   "multiple": 4.048,
+   "vs_spy": 0.9
+  }
+ ]
+}
