@@ -1,8 +1,20 @@
 .env
 .env.*
 *.env
+!.env.example
 data/raw/
 .venv/
 __pycache__/
 .ipynb_checkpoints/
 data/
+
+# Ask Zero to One build
+sources/book/
+sources/notes/
+build/
+.pytest_cache/
+
+# Engagement documents (spec, architecture diagrams) stay private.
+# Only docs/README.md, which describes them, is public.
+docs/*
+!docs/README.md
