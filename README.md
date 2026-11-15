@@ -19,7 +19,7 @@ The full write-up, with figures and numbers, is in [`output/Zero_to_One_Findings
 
 ## Notebooks and data
 
-| Notebook | Claim | Data |
+| Notebook (in `notebooks/`) | Claim | Data |
 |---|---|---|
 | `01_H1_power_law` | Power law | SEC XBRL public float and total assets; Y Combinator directory |
 | `02_H2_competition_profits` | Competition destroys profits | Census Economic Census and ASM; SEC XBRL financials and SIC codes |
@@ -53,7 +53,7 @@ FRED_API_KEY=...                           # https://fred.stlouisfed.org/docs/ap
 Run the notebooks in order (Kernel → Restart & Run All), or headless:
 
 ```bash
-jupyter nbconvert --to notebook --execute --inplace 01_H1_power_law.ipynb
+jupyter nbconvert --to notebook --execute --inplace notebooks/01_H1_power_law.ipynb
 ```
 
 Then rebuild the report:
@@ -65,6 +65,19 @@ python findings_report.py
 Downloads are cached in `data/raw/` (not committed). The first run of each notebook fetches its data; later runs read the cache. Delete a file there to refresh it. If a site refuses a scripted download, the notebook prints the URL and the path to save the file to by hand.
 
 To exercise the code without network access or keys, set `THIEL_SYNTHETIC=1`. The notebooks then run on generated data; the results are meaningless and are for testing only.
+
+## Ask Zero to One (in development)
+
+An agentic RAG assistant that answers questions about the book's arguments with cited evidence from three sources: the book, the analyst's reading notes, and the findings above. Claude handles reasoning and OpenAI handles embeddings. The design documents are not published here; [`docs/README.md`](docs/README.md) describes them and summarises the architecture.
+
+```bash
+pip install -r requirements-rag.txt
+cp .env.example .env      # or add the new keys to your existing .env (see the note inside)
+python -m rag doctor      # checks keys, models, sources and analysis outputs
+pytest -q
+```
+
+The book and the notes go in `sources/book/` and `sources/notes/`. Neither is committed; see [`sources/README.md`](sources/README.md).
 
 ## How it fits together
 
