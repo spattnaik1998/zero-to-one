@@ -3,6 +3,8 @@
     python -m rag doctor            check keys, models, sources and analysis outputs
     python -m rag doctor --offline  same, but missing API keys are warnings (CI, no secrets)
     python -m rag manifest          write build/manifest.json for the current sources
+    python -m rag ingest [book|notes|all]
+                                    parse the sources into build/candidates/*.jsonl
 """
 from __future__ import annotations
 
@@ -11,7 +13,7 @@ import importlib.util
 import sys
 
 from . import sources
-from .config import ROOT, find_dotenv, load_settings
+from .config import ROOT, env_conflicts, find_dotenv, load_settings
 
 PACKAGES = ["anthropic", "openai", "duckdb", "pdfplumber", "nbformat", "rank_bm25"]
 
@@ -27,6 +29,9 @@ def doctor(offline: bool) -> int:
 
     env_file = find_dotenv()
     add("OK" if env_file else "WARN", ".env", str(env_file) if env_file else "none found; copy .env.example")
+    for name in env_conflicts():
+        add("WARN", name, "set in both the environment and .env with different values; the environment's "
+                          "value is used. Remove the stale environment variable (or the .env line) and restart.")
     try:
         s = load_settings()
     except ValueError as e:
@@ -72,12 +77,36 @@ def main(argv: list[str] | None = None) -> int:
     d = sub.add_parser("doctor", help="check that the build can run")
     d.add_argument("--offline", action="store_true", help="treat missing API keys as warnings")
     sub.add_parser("manifest", help="write build/manifest.json")
+    i = sub.add_parser("ingest", help="parse the book and notes into build/candidates/")
+    i.add_argument("what", nargs="?", choices=["book", "notes", "all"], default="all")
     args = p.parse_args(argv)
 
     if args.cmd == "doctor":
         return doctor(args.offline)
-    path = sources.write_manifest(load_settings())
-    print(f"wrote {path}")
+    settings = load_settings()
+    if args.cmd == "manifest":
+        print(f"wrote {sources.write_manifest(settings)}")
+        return 0
+    return ingest(settings, args.what)
+
+
+def ingest(settings, what: str) -> int:
+    from .ingest.run import ingest_book, ingest_notes   # pdfplumber is only needed here
+    if what in ("book", "all"):
+        r = ingest_book(settings)
+        print(f"book: {len(r['parts'])} parts, {r['paragraphs']} paragraphs, {r['chunks']} chunks "
+              f"(words min {r['words']['min']}, median {r['words']['median']}, max {r['words']['max']})")
+        for part in r["parts"]:
+            print(f"  {part['number']:2d}  pp.{part['pages'][0]}-{part['pages'][1]}  {part['title']}")
+        print(f"  -> {r['output']}")
+        if not r["licensed"]:
+            print("  note: RAG_BOOK_LICENSED is false; these chunks are for development only")
+    if what in ("notes", "all"):
+        r = ingest_notes(settings)
+        print(f"notes: {r['bullets']} bullets ({r['opinion_bullets']} opinion), {r['corrections']} corrections; "
+              f"chapters without notes: {r['chapters_without_notes'] or 'none'}")
+        for out in r["output"]:
+            print(f"  -> {out}")
     return 0
 
 

@@ -70,6 +70,20 @@ class Settings:
     build_dir: Path
 
 
+WATCHED = ("CLAUDE_PROVIDER", "CLAUDE_MODEL", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_EMBEDDING_MODEL")
+
+
+def env_conflicts(environ: Mapping[str, str] | None = None,
+                  dotenv: Mapping[str, str] | None = None) -> list[str]:
+    """Settings set in both the process environment and .env with different values.
+    The environment wins, so a stale system variable silently hides a corrected .env."""
+    environ = os.environ if environ is None else environ
+    dotenv = read_dotenv() if dotenv is None else dotenv
+    return [k for k in WATCHED
+            if (environ.get(k) or "").strip() and (dotenv.get(k) or "").strip()
+            and environ[k].strip() != dotenv[k].strip()]
+
+
 def load_settings(environ: Mapping[str, str] | None = None,
                   dotenv: Mapping[str, str] | None = None) -> Settings:
     """Build Settings. Process environment overrides `.env`."""

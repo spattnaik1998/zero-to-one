@@ -33,7 +33,10 @@ pip install -r requirements-rag.txt
 pytest -q                       # tests in tests/; CI runs these on every PR
 python -m rag doctor            # keys, models, sources, analysis outputs; --offline downgrades missing keys to warnings
 python -m rag manifest          # build/manifest.json: source hashes, git commit, models, licence status
+python -m rag ingest [book|notes|all]   # parse sources/ into build/candidates/*.jsonl (~20 s for the book)
 ```
+
+Parser tests run on synthetic PDFs built in `tests/conftest.py` with the same typography as the real sources (the real files never reach CI). `tests/test_real_sources.py` checks the real book and notes and is skipped when `sources/` is empty. The book parser's layout constants (font sizes, drop cap, indent) match the development copy; a new edition must pass `check_structure` and `test_real_sources.py` before its chunks are trusted.
 
 Everything under `output/` (figures, tables, summary JSONs, the PDF) is committed. A notebook run, including a `THIEL_SYNTHETIC=1` run, overwrites those tracked files in place, because synthetic mode writes to the same paths. After a synthetic test, restore them with `git checkout -- output/` and don't commit them.
 

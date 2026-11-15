@@ -1,6 +1,12 @@
 import pytest
 
-from rag.config import DEFAULT_CLAUDE_MODEL, find_dotenv, load_settings, parse_dotenv
+from rag.config import DEFAULT_CLAUDE_MODEL, env_conflicts, find_dotenv, load_settings, parse_dotenv
+
+
+def test_env_conflicts_flags_only_differing_values():
+    environ = {"OPENAI_API_KEY": "old", "ANTHROPIC_API_KEY": "same", "CLAUDE_MODEL": "x"}
+    dotenv = {"OPENAI_API_KEY": "new", "ANTHROPIC_API_KEY": "same", "OPENAI_EMBEDDING_MODEL": "m"}
+    assert env_conflicts(environ, dotenv) == ["OPENAI_API_KEY"]
 
 
 def test_parse_dotenv_handles_quotes_comments_and_export():
