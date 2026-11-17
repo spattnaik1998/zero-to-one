@@ -33,7 +33,7 @@ pip install -r requirements-rag.txt
 pytest -q                       # tests in tests/; CI runs these on every PR
 python -m rag doctor            # keys, models, sources, analysis outputs; --offline downgrades missing keys to warnings
 python -m rag manifest          # build/manifest.json: source hashes, git commit, models, licence status
-python -m rag ingest [notes|notebooks|registry|all]   # build/candidates/; all = notes + notebooks + registry (stops if the registry sources disagree)
+python -m rag ingest [notes|notebooks|registry|tables|all]   # build/candidates/; all runs every step; stops if the registry sources disagree or the DuckDB copy differs from output/
 ```
 
 Parser tests run on a synthetic notes PDF built in `tests/conftest.py` with the same typography as the real notes, and on synthetic notebooks and repos built inside the tests. `tests/test_real_sources.py` checks the real notes, and `tests/test_registry.py::test_the_real_repository_is_consistent` checks the real notebooks, README and `findings_report.py`; both run in CI because those files are committed.
@@ -67,5 +67,6 @@ When printing notebook contents from a shell, set `PYTHONIOENCODING=utf8`: the n
 - New notebooks go in `notebooks/` and follow the existing shape: a markdown cell quoting the claim and chapter, setup (the two `sys.path` lines that find the repo root, then `import thiel_common as tc; tc.style()`), analysis cells, and a final "Verdict inputs and check cell" that writes the summary JSON.
 - Figure and table names are prefixed `hN_` (`h2_fig3_airlines_bigtech`, `h2a_cross_section_slopes`).
 - Verdicts appear in three places that must agree: `VERDICTS` in `findings_report.py`, the "Findings" table in `README.md`, and the scorecard claim text in `build()`. Chapters must also agree between each notebook's heading, the README row and the scorecard. `rag/ingest/registry.py` checks both, and `tests/test_registry.py::test_the_real_repository_is_consistent` fails CI on any mismatch. `README.md` also has the notebook/data table. Update all of them when a verdict changes or a notebook is added.
+- Identify figures by file name (`h1_fig1_ccdf`), never by figure number: the report and the notebooks number figures differently (the report's "Figure H1-1" is `h1_fig3_wealth_creation`, the notebook's is `h1_fig1_ccdf`).
 - `H1_PROVISIONAL` at the top of `findings_report.py` switches the H1 section and scorecard to provisional wording. The RAG claims registry must carry the same status, and the answer verifier must give no verdict for a provisional or untested claim.
 - Each `rag/` subpackage's `__init__.py` lists its planned modules and the spec section they implement. Keep those lists current as modules land.
