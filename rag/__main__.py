@@ -3,10 +3,8 @@
     python -m rag doctor            check keys, models, sources and analysis outputs
     python -m rag doctor --offline  same, but missing API keys are warnings (CI, no secrets)
     python -m rag manifest          write build/manifest.json for the current sources
-    python -m rag ingest [notes|notebooks|registry|book|all]
-                                    build candidate files in build/candidates/; `all` is
-                                    notes + notebooks + registry (the book is out of scope
-                                    and runs only when asked for)
+    python -m rag ingest [notes|notebooks|registry|all]
+                                    build candidate files in build/candidates/
 """
 from __future__ import annotations
 
@@ -51,16 +49,8 @@ def doctor(offline: bool) -> int:
         s.embedding_model or "missing; pin an exact model name")
 
     found = sources.find_sources(s.sources_dir)
-    book, notes = found["book"], found["notes"]
+    notes = found["notes"]
     add("OK" if notes else "FAIL", "notes source", f"{len(notes)} PDF in {s.sources_dir.name}/notes")
-    # The book is out of the corpus (scope decision); it is only checked when present.
-    if not book:
-        add("OK", "book source", "none (the book is out of scope; not needed)")
-    else:
-        add("OK" if len(book) == 1 else "WARN", "book source",
-            f"{len(book)} PDF in {s.sources_dir.name}/book (optional)" + ("" if len(book) == 1 else "; expected 1"))
-        add("OK" if s.book_licensed else "WARN", "book licence",
-            "confirmed" if s.book_licensed else "not confirmed: local development use only")
 
     have = [n for n in range(1, 9) if (ROOT / "output" / f"h{n}_summary.json").is_file()]
     add("OK" if len(have) == 8 else "WARN", "analysis outputs",
@@ -84,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--offline", action="store_true", help="treat missing API keys as warnings")
     sub.add_parser("manifest", help="write build/manifest.json")
     i = sub.add_parser("ingest", help="build candidate files in build/candidates/")
-    i.add_argument("what", nargs="?", choices=["notes", "notebooks", "registry", "book", "all"], default="all")
+    i.add_argument("what", nargs="?", choices=["notes", "notebooks", "registry", "all"], default="all")
     args = p.parse_args(argv)
 
     if args.cmd == "doctor":
@@ -97,16 +87,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def ingest(settings, what: str) -> int:
-    from .ingest.run import RegistryError, ingest_book, ingest_notebooks, ingest_notes, ingest_registry
-    if what == "book":
-        r = ingest_book(settings)
-        print(f"book: {len(r['parts'])} parts, {r['paragraphs']} paragraphs, {r['chunks']} chunks "
-              f"(words min {r['words']['min']}, median {r['words']['median']}, max {r['words']['max']})")
-        for part in r["parts"]:
-            print(f"  {part['number']:2d}  pp.{part['pages'][0]}-{part['pages'][1]}  {part['title']}")
-        print(f"  -> {r['output']}")
-        if not r["licensed"]:
-            print("  note: RAG_BOOK_LICENSED is false; these chunks are for development only")
+    from .ingest.run import RegistryError, ingest_notebooks, ingest_notes, ingest_registry
     if what in ("notes", "all"):
         r = ingest_notes(settings)
         print(f"notes: {r['bullets']} bullets ({r['opinion_bullets']} opinion), {r['corrections']} corrections; "

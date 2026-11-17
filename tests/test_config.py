@@ -29,14 +29,13 @@ def test_defaults():
     assert s.claude_provider == "anthropic"
     assert s.claude_model == DEFAULT_CLAUDE_MODEL
     assert s.embedding_model is None
-    assert s.book_licensed is False
 
 
 def test_environment_overrides_dotenv():
     s = load_settings(environ={"OPENAI_EMBEDDING_MODEL": "from-env"},
-                      dotenv={"OPENAI_EMBEDDING_MODEL": "from-file", "RAG_BOOK_LICENSED": "true"})
+                      dotenv={"OPENAI_EMBEDDING_MODEL": "from-file", "CLAUDE_MODEL": "file-model"})
     assert s.embedding_model == "from-env"
-    assert s.book_licensed is True
+    assert s.claude_model == "file-model"
 
 
 def test_unknown_provider_is_rejected():

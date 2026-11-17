@@ -1,9 +1,7 @@
 """Source corpora and the corpus manifest.
 
-The book and the analyst's notes live under `sources/` and are never committed
-(see sources/README.md). Every build records what it read in a manifest: file
-hashes, the git commit of the analysis, the models used and the book's licence
-status. The CI release gate publishes this manifest with each corpus version.
+The analyst's notes live under `sources/notes/`. Every build records what it read
+in a manifest: file hashes, the git commit of the analysis and the models used. The CI release gate publishes this manifest with each corpus version.
 """
 from __future__ import annotations
 
@@ -16,7 +14,7 @@ from pathlib import Path
 
 from .config import ROOT, Settings
 
-ROLES = ("book", "notes")
+ROLES = ("notes",)
 
 
 @dataclass(frozen=True)
@@ -62,7 +60,6 @@ def build_manifest(settings: Settings) -> dict:
     return {
         "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git": git_state(),
-        "book_licensed": settings.book_licensed,
         "models": {
             "claude_provider": settings.claude_provider,
             "claude_model": settings.claude_model,

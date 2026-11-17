@@ -1,7 +1,7 @@
 """Offline CI build: sources to candidate stores (architecture band A, spec section 6.1).
 
-Scope: the corpus is the analyst's notes and the H1-H8 analysis. The book is out of
-scope; its parser is kept for local use only and runs only with `ingest book`.
+Scope: the corpus is the analyst's notes and the H1-H8 analysis; the primary evidence is
+the data the notebooks pulled through the API keys. The book is not part of the corpus.
 
 Built (`python -m rag ingest` writes build/candidates/):
   notes.py      notes PDF -> bullets by chapter (voice=analyst, "My view" = opinion) and the
@@ -14,7 +14,6 @@ Built (`python -m rag ingest` writes build/candidates/):
   chunking.py   section-bounded chunks, <= 375 words (~500 tokens), 15% sentence overlap
   pdf.py        word -> line extraction by baseline
   run.py        runs the steps and writes the candidate files
-  book.py       (out of scope) book PDF -> paragraphs -> chunks
 
 Planned:
   tables.py     output/ summaries, tables and figures -> DuckDB with schema cards

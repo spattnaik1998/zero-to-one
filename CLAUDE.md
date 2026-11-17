@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 "Testing Zero to One": a claim-by-claim empirical test of Peter Thiel's book against public data from before and after its publication (`BOOK_DATE = 2014-09-16`). One Jupyter notebook per hypothesis (`notebooks/01_H1_…` to `08_H8_…`), a shared helper module (`thiel_common.py`), and a PDF report builder (`findings_report.py`).
 
-On top of it, "Ask Zero to One" (`rag/`) is an agentic RAG assistant being built for a client over the book, the analyst's notes and this analysis. Its design is `docs/agentic_rag_spec.md` and its reference architecture `docs/architecture_v3.png`. The spec's decision log records what has been settled; read it before changing the design. Everything in `docs/` except `docs/README.md` is private engagement material: it is git-ignored and must never be committed or quoted in tracked files, because the GitHub repo is public. Don't name the client in tracked files.
+On top of it, "Ask Zero to One" (`rag/`) is an agentic RAG assistant being built for a client over the analyst's notes and this analysis, with the data the notebooks pulled through the API keys (SEC, Census, FRED/BLS, OEWS) as the primary evidence. Its design is `docs/agentic_rag_spec.md` and its reference architecture `docs/architecture_v3.png`. The spec's decision log records what has been settled; read it before changing the design. Everything in `docs/` except `docs/README.md` is private engagement material: it is git-ignored and must never be committed or quoted in tracked files, because the GitHub repo is public. Don't name the client in tracked files.
 
 Note: `../../AGENTS.md` (in `Downloads/`) describes an unrelated CrewAI project and does not apply here.
 
@@ -33,10 +33,10 @@ pip install -r requirements-rag.txt
 pytest -q                       # tests in tests/; CI runs these on every PR
 python -m rag doctor            # keys, models, sources, analysis outputs; --offline downgrades missing keys to warnings
 python -m rag manifest          # build/manifest.json: source hashes, git commit, models, licence status
-python -m rag ingest [notes|notebooks|registry|book|all]   # build/candidates/; all = notes + notebooks + registry (stops if the registry sources disagree)
+python -m rag ingest [notes|notebooks|registry|all]   # build/candidates/; all = notes + notebooks + registry (stops if the registry sources disagree)
 ```
 
-Parser tests run on synthetic PDFs built in `tests/conftest.py` with the same typography as the real sources. `tests/test_real_sources.py` checks the real book and notes; the book test is skipped wherever the book is absent (always in CI), while the notes test runs everywhere because the notes are committed. The book parser's layout constants (font sizes, drop cap, indent) match the development copy; a new edition must pass `check_structure` and `test_real_sources.py` before its chunks are trusted.
+Parser tests run on a synthetic notes PDF built in `tests/conftest.py` with the same typography as the real notes, and on synthetic notebooks and repos built inside the tests. `tests/test_real_sources.py` checks the real notes, and `tests/test_registry.py::test_the_real_repository_is_consistent` checks the real notebooks, README and `findings_report.py`; both run in CI because those files are committed.
 
 Everything under `output/` (figures, tables, summary JSONs, the PDF) is committed. A notebook run, including a `THIEL_SYNTHETIC=1` run, overwrites those tracked files in place, because synthetic mode writes to the same paths. After a synthetic test, restore them with `git checkout -- output/` and don't commit them.
 
@@ -60,7 +60,7 @@ When printing notebook contents from a shell, set `PYTHONIOENCODING=utf8`: the n
 
 **`rag/`** reads settings through `rag/config.py` from the same nearest `.env` as `thiel_common`. Keep every key (SEC, Census, FRED, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) in that one file: a closer second `.env` would hide the notebooks' keys. Template: `.env.example`. Claude handles reasoning (`CLAUDE_MODEL`, default `claude-opus-5-5`; `CLAUDE_PROVIDER` selects the platform). OpenAI handles embeddings only, with the model pinned in `OPENAI_EMBEDDING_MODEL`. Changing that model means re-embedding every index.
 
-**The book is out of the corpus** (scope decision): the assistant works from the notes and the analysis, and Thiel's words appear only as the notebooks' claim-cell quotations. `rag/ingest/book.py` stays for local use (`ingest book`). **`sources/book/`** holds a local copy of the book. It is git-ignored and must never be committed, even if asked: the GitHub repo is public and the book is copyrighted. Client builds must refuse to run while `RAG_BOOK_LICENSED` is false. **`sources/notes/`** holds the analyst's reading notes, which the analyst chose to publish; they are tracked, so CI's real-source notes test runs on them.
+**The book is out of the corpus and out of the code** (scope decision): the assistant works from the notes and the analysis, and Thiel's words appear only as the notebooks' claim-cell quotations. **`sources/book/`** stays git-ignored so that a local copy of the book is never committed: the GitHub repo is public and the book is copyrighted. **`sources/notes/`** holds the analyst's reading notes, which the analyst chose to publish.
 
 ## Conventions
 

@@ -1,6 +1,6 @@
-"""Split paragraphs into retrieval chunks (spec section 6.1, step 1).
+"""Split text into retrieval chunks (spec section 6.1).
 
-Chunks stay inside one group (for the book, a chapter section), hold at most
+Chunks stay inside one group (e.g. one notebook cell or section), hold at most
 `max_words` words (375 words is about 500 tokens at ~1.33 tokens per word), and
 start with up to `overlap` (15%) of the previous chunk's closing sentences, so a
 passage cut at a boundary is still found whole.

@@ -1,29 +1,13 @@
-"""Checks against the real book and notes. They run only where sources/ holds them
-(never in CI: the files are git-ignored), and guard against a new edition or a
-revised notes file silently breaking the parsers."""
+"""Checks against the real notes in sources/notes/ (committed, so this runs in CI too).
+They guard against a revised notes file silently breaking the parser."""
 import re
 
 import pytest
 
 from rag.config import ROOT
-from rag.ingest.book import book_chunks, check_structure, read_book
 from rag.ingest.notes import read_notes
 
-BOOK = sorted((ROOT / "sources" / "book").glob("*.pdf"))
 NOTES = sorted((ROOT / "sources" / "notes").glob("*.pdf"))
-
-
-@pytest.mark.skipif(len(BOOK) != 1, reason="book PDF not present in sources/book")
-def test_real_book():
-    parts, paras = read_book(BOOK[0])
-    check_structure(parts)
-    assert all(a.page_end < b.page_start for a, b in zip(parts, parts[1:]))
-    first = {p.chapter: p.text for p in reversed(paras)}
-    assert first[1].startswith("WHENEVER I INTERVIEW")
-    chunks = book_chunks(paras)
-    assert len({c.id for c in chunks}) == len(chunks)
-    assert all(0 < c.n_words <= 375 for c in chunks)
-    assert {c.chapter for c in chunks} == set(range(16))
 
 
 @pytest.mark.skipif(len(NOTES) != 1, reason="notes PDF not present in sources/notes")
