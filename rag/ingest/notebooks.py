@@ -21,7 +21,7 @@ from .chunking import Piece, chunk, words
 
 _TITLE = re.compile(r"^#\s*H(\d+)\s*\S\s*(.+)$")
 _HEADING = re.compile(r"^(#{1,6})\s+(.+)$")
-_SUB = re.compile(r"\bH(\d)([a-d])\b")
+_SUB = re.compile(r"\bH(\d)([a-d])\b")         # sub-claims H1a..H9d; extend if hypotheses reach H10
 _CAVEATS = re.compile(r"^\*\*(?:[A-Z][a-z]+ )?[Cc]aveats?\.?\*\*\.?", re.M)
 _SUBCLAIM_ROW = re.compile(r"^\|\s*\*\*(H\d[a-d])\.\*\*\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*$")
 _CHAPTER_TOKEN = re.compile(r"\d+\s*[–—-]\s*\d+|\d+|conclusion|preface", re.I)
@@ -96,14 +96,27 @@ def parse_claim_cell(src: str) -> ClaimCell:
     m = _CAVEATS.search(body)
     before, caveat_text = (body[:m.start()], body[m.end():]) if m else (body, "")
 
+    # A bulleted caveat list ends at the first non-bullet line; what follows (e.g. a
+    # "Before running" note) goes back to the context. Without bullets, the whole
+    # paragraph after the marker is the caveat ("**Interpretation caveat.** ...").
+    tail_lines = caveat_text.strip("\n").splitlines()
+    bullets, after = [], []
+    if any(re.match(r"^[*-]\s+", l) for l in tail_lines):
+        for i, l in enumerate(tail_lines):
+            if re.match(r"^[*-]\s+", l):
+                bullets.append(re.sub(r"^[*-]\s+", "", l).strip())
+            elif l.strip():
+                after = tail_lines[i:]
+                break
+        caveats = tuple(bullets)
+    else:
+        caveats = (caveat_text.strip(),) if caveat_text.strip() else ()
+
     quote = " ".join(l.lstrip(">").strip() for l in before.splitlines() if l.startswith(">")).strip()
-    rest = [l for l in before.splitlines() if not l.startswith(">")]
+    rest = [l for l in before.splitlines() if not l.startswith(">")] + ([""] + after if after else [])
     sub_claims = tuple({"id": r.group(1), "claim": r.group(2).strip(), "test": r.group(3).strip(),
                         "data": r.group(4).strip()} for r in map(_SUBCLAIM_ROW.match, rest) if r)
     context = "\n".join(rest).strip()
-
-    bullets = [re.sub(r"^[*-]\s+", "", l).strip() for l in caveat_text.splitlines() if re.match(r"^[*-]\s+", l)]
-    caveats = tuple(bullets) if bullets else ((caveat_text.strip(),) if caveat_text.strip() else ())
     return ClaimCell(hypothesis, title, chapters, quote, context, sub_claims, caveats)
 
 

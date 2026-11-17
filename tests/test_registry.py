@@ -101,9 +101,16 @@ def test_chapter_disagreement_is_a_problem(tmp_path):
 def test_provisional_and_pending_claims_carry_no_verdict(tmp_path):
     claims, _, problems = build_registry(make_repo(tmp_path, provisional=True, h2_summary=False))
     by_id = {c.id: c for c in claims}
-    assert (by_id["H1"].status, by_id["H1"].verdict) == ("provisional", None)
+    assert (by_id["H1"].status, by_id["H1"].verdict, by_id["H1"].one_line) == ("provisional", None, None)
     assert (by_id["H2"].status, by_id["H2"].verdict) == ("pending", None)
     assert problems == []
+
+
+def test_two_notebooks_claiming_one_hypothesis_is_a_problem(tmp_path):
+    repo = make_repo(tmp_path)
+    (repo / "notebooks" / "09_H1_copy.ipynb").write_bytes((repo / "notebooks" / "01_H1.ipynb").read_bytes())
+    _, _, problems = build_registry(repo)
+    assert problems == ["H1: claimed by both notebooks/01_H1.ipynb and notebooks/09_H1_copy.ipynb"]
 
 
 def test_the_real_repository_is_consistent():

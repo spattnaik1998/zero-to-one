@@ -70,6 +70,13 @@ def test_inline_caveat_paragraph():
     assert c.caveats == ("This is a scorecard, not a test of cause.",) and c.quote == ""
 
 
+def test_text_after_the_caveat_list_returns_to_the_context():
+    c = parse_claim_cell("# H8 · Computers (ch. 12)\n\nIntro.\n\n**Caveats**\n* Only caveat.\n\n"
+                         "**Before running:** install openpyxl.\n")
+    assert c.caveats == ("Only caveat.",)
+    assert c.context.endswith("**Before running:** install openpyxl.")
+
+
 def test_claim_cell_needs_a_heading_with_chapters():
     with pytest.raises(ValueError):
         parse_claim_cell("# H3 · No chapters here\n")

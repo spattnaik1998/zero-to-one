@@ -111,7 +111,11 @@ def build_registry(root: Path, notes: list | None = None) -> tuple[list[Claim], 
     cells: dict[int, tuple[ClaimCell, str]] = {}
     for nb in sorted((root / "notebooks").glob("*.ipynb")):
         claim, _ = notebook_chunks(nb, root)
-        cells[int(claim.hypothesis[1:])] = (claim, nb.relative_to(root).as_posix())
+        n, rel = int(claim.hypothesis[1:]), nb.relative_to(root).as_posix()
+        if n in cells:
+            problems.append(f"{claim.hypothesis}: claimed by both {cells[n][1]} and {rel}")
+            continue
+        cells[n] = (claim, rel)
 
     numbers = sorted(set(cells) | set(report["scorecard"]) | set(report["verdicts"]) | set(readme))
     claims: list[Claim] = []
@@ -160,7 +164,8 @@ def build_registry(root: Path, notes: list | None = None) -> tuple[list[Claim], 
             chapters=chapters,
             status=status,
             verdict=verdict if status in HAS_VERDICT else None,
-            one_line=row["one_line"] if row and status in (FINAL, PROVISIONAL) else None,
+            # The one-line summary states a conclusion, so it follows the verdict rule.
+            one_line=row["one_line"] if row and status in HAS_VERDICT else None,
             thiel_quote=cell.quote if cell else "",
             sub_claims=cell.sub_claims if cell else (),
             caveats=cell.caveats if cell else (),
