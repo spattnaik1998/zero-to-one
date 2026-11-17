@@ -14,6 +14,7 @@ from ..sources import find_sources, sha256
 from .notebooks import notebook_chunks
 from .notes import missing_chapters, read_notes
 from .registry import build_registry, write_json
+from .tables import build_database, verify_database
 
 
 class RegistryError(RuntimeError):
@@ -58,6 +59,28 @@ def ingest_notebooks(settings: Settings, root: Path = ROOT) -> dict:
         kinds[c.kind] = kinds.get(c.kind, 0) + 1
     return {"output": str(out), "chunks": len(chunks), "per_hypothesis": per, "kinds": kinds,
             "thiel_quotes": sum(c.voice == "thiel" for c in chunks)}
+
+
+class TablesError(RuntimeError):
+    """The database does not match the files it was built from."""
+
+
+def ingest_tables(settings: Settings, root: Path = ROOT) -> dict:
+    """Load output/ into DuckDB, then check every value against the source files."""
+    db = settings.build_dir / "candidates" / "analysis.duckdb"
+    cards, figures, n_values = build_database(root, db)
+    problems = verify_database(root, db)
+    if problems:
+        raise TablesError("the database differs from output/:\n  - " + "\n  - ".join(problems[:20]))
+    out_cards = write_json(settings.build_dir / "candidates" / "schema_cards.json", cards)
+    out_figs = write_json(settings.build_dir / "candidates" / "figures.json", figures)
+    return {
+        "output": [str(db), str(out_cards), str(out_figs)],
+        "tables": len(cards), "rows": sum(c.rows for c in cards), "summary_values": n_values,
+        "figures": len(figures), "untraced_tables": [c.name for c in cards if c.cell is None],
+        "caption_sources": {s: sum(f.caption_source == s for f in figures) for s in ("report", "notebook heading", "none")},
+        "unresolved_captions": [f.name for f in figures if f.unresolved],
+    }
 
 
 def ingest_registry(settings: Settings, root: Path = ROOT) -> dict:

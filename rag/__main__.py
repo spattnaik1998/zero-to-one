@@ -3,7 +3,7 @@
     python -m rag doctor            check keys, models, sources and analysis outputs
     python -m rag doctor --offline  same, but missing API keys are warnings (CI, no secrets)
     python -m rag manifest          write build/manifest.json for the current sources
-    python -m rag ingest [notes|notebooks|registry|all]
+    python -m rag ingest [notes|notebooks|registry|tables|all]
                                     build candidate files in build/candidates/
 """
 from __future__ import annotations
@@ -74,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--offline", action="store_true", help="treat missing API keys as warnings")
     sub.add_parser("manifest", help="write build/manifest.json")
     i = sub.add_parser("ingest", help="build candidate files in build/candidates/")
-    i.add_argument("what", nargs="?", choices=["notes", "notebooks", "registry", "all"], default="all")
+    i.add_argument("what", nargs="?", choices=["notes", "notebooks", "registry", "tables", "all"], default="all")
     args = p.parse_args(argv)
 
     if args.cmd == "doctor":
@@ -87,7 +87,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def ingest(settings, what: str) -> int:
-    from .ingest.run import RegistryError, ingest_notebooks, ingest_notes, ingest_registry
+    from .ingest.run import (RegistryError, TablesError, ingest_notebooks, ingest_notes, ingest_registry,
+                             ingest_tables)
     if what in ("notes", "all"):
         r = ingest_notes(settings)
         print(f"notes: {r['bullets']} bullets ({r['opinion_bullets']} opinion), {r['corrections']} corrections; "
@@ -109,6 +110,18 @@ def ingest(settings, what: str) -> int:
                                        for cid, status, verdict in r["claims"]))
         print(f"  untested chapters: {r['untested_chapters']}"
               + ("" if r["notes_linked"] else "; notes not found, so no note links"))
+        for out in r["output"]:
+            print(f"  -> {out}")
+    if what in ("tables", "all"):
+        try:
+            r = ingest_tables(settings)
+        except TablesError as e:
+            print(f"tables: FAILED, {e}")
+            return 1
+        print(f"tables: {r['tables']} tables ({r['rows']} rows), {r['summary_values']} summary values, "
+              f"{r['figures']} figures; verified against output/ with no differences")
+        print(f"  captions: {r['caption_sources']}; unresolved: {r['unresolved_captions'] or 'none'}; "
+              f"tables not traced to a notebook cell: {r['untraced_tables'] or 'none'}")
         for out in r["output"]:
             print(f"  -> {out}")
     return 0

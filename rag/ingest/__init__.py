@@ -13,10 +13,12 @@ Built (`python -m rag ingest` writes build/candidates/):
   chapters.py   the book's 16 parts (preface 0, chapters 1-14, conclusion 15)
   chunking.py   section-bounded chunks, <= 375 words (~500 tokens), 15% sentence overlap
   pdf.py        word -> line extraction by baseline
+  tables.py     output/ -> DuckDB: the 46 results tables as-is, every summary value addressed by
+                path (summary_values), schema cards and figure captions; verify_database()
+                compares every cell and value with the source files
   run.py        runs the steps and writes the candidate files
 
 Planned:
-  tables.py     output/ summaries, tables and figures -> DuckDB with schema cards
   embed.py      chunk vectors with the pinned OPENAI_EMBEDDING_MODEL
   panels.py     phase 3: cleaned thiel_common panels as read-only views
 
