@@ -143,6 +143,18 @@ def test_openai_embedder_batches_orders_counts_and_caches(tmp_path, monkeypatch)
     cache.close()
 
 
+def test_index_build_requires_the_registry_and_a_key(candidates, tmp_path):
+    from rag.ingest.run import IndexBuildError, ingest_index
+    build = candidates.parent
+    (candidates / "claims_registry.json").unlink()
+    settings = load_settings(environ={"RAG_BUILD_DIR": str(build), "OPENAI_API_KEY": "k",
+                                      "OPENAI_EMBEDDING_MODEL": "m"}, dotenv={})
+    with pytest.raises(IndexBuildError, match="claims_registry.json"):
+        ingest_index(settings)                            # fails before any API call
+    with pytest.raises(IndexBuildError, match="OPENAI_API_KEY"):
+        ingest_index(load_settings(environ={"RAG_BUILD_DIR": str(build)}, dotenv={}))
+
+
 def test_normalise_rejects_zero_vectors():
     with pytest.raises(ValueError):
         normalise(np.zeros((1, 3), np.float32))

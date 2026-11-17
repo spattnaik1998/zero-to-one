@@ -72,7 +72,10 @@ def ingest_index(settings: Settings) -> dict:
     if not settings.openai_api_key or not settings.embedding_model:
         raise IndexBuildError("OPENAI_API_KEY and OPENAI_EMBEDDING_MODEL must both be set (see python -m rag doctor)")
     candidates = settings.build_dir / "candidates"
-    needed = ["notes_chunks.jsonl", "notebook_chunks.jsonl", "schema_cards.json", "figures.json"]
+    # claims_registry.json supplies the hypothesis titles used as search context; without it the
+    # index would silently differ from a full build.
+    needed = ["notes_chunks.jsonl", "notebook_chunks.jsonl", "schema_cards.json", "figures.json",
+              "claims_registry.json"]
     missing = [n for n in needed if not (candidates / n).is_file()]
     if missing:
         raise IndexBuildError(f"run the earlier ingest steps first; missing {missing}")
