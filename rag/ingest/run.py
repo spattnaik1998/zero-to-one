@@ -15,6 +15,8 @@ from .notebooks import notebook_chunks
 from .notes import missing_chapters, read_notes
 from .registry import build_registry, write_json
 from .tables import build_database, verify_database
+from .embed import EmbeddingCache, OpenAIEmbedder
+from .index import build_indexes
 
 
 class RegistryError(RuntimeError):
@@ -59,6 +61,29 @@ def ingest_notebooks(settings: Settings, root: Path = ROOT) -> dict:
         kinds[c.kind] = kinds.get(c.kind, 0) + 1
     return {"output": str(out), "chunks": len(chunks), "per_hypothesis": per, "kinds": kinds,
             "thiel_quotes": sum(c.voice == "thiel" for c in chunks)}
+
+
+class IndexBuildError(RuntimeError):
+    """The search indexes cannot be built (missing key or model, or missing candidate files)."""
+
+
+def ingest_index(settings: Settings) -> dict:
+    """Embed the candidate documents and write build/candidates/indexes.duckdb."""
+    if not settings.openai_api_key or not settings.embedding_model:
+        raise IndexBuildError("OPENAI_API_KEY and OPENAI_EMBEDDING_MODEL must both be set (see python -m rag doctor)")
+    candidates = settings.build_dir / "candidates"
+    needed = ["notes_chunks.jsonl", "notebook_chunks.jsonl", "schema_cards.json", "figures.json"]
+    missing = [n for n in needed if not (candidates / n).is_file()]
+    if missing:
+        raise IndexBuildError(f"run the earlier ingest steps first; missing {missing}")
+    cache = EmbeddingCache(settings.build_dir / "cache" / "embeddings.duckdb")
+    try:
+        embedder = OpenAIEmbedder(settings.embedding_model, settings.openai_api_key, cache)
+        report = build_indexes(candidates, candidates / "indexes.duckdb", embedder)
+    finally:
+        cache.close()
+    report.update(api_calls=embedder.api_calls, tokens=embedder.tokens, cache_hits=embedder.cache_hits)
+    return report
 
 
 class TablesError(RuntimeError):

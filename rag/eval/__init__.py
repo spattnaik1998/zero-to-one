@@ -1,5 +1,9 @@
 """Evaluation and the CI release gate (spec section 10).
 
+Built: retrieval_smoke.py, 25 questions with a known right document; reports hit@1/3/5
+for keyword, vector and hybrid search (tests/test_retrieval.py runs it where an OpenAI
+key and the built indexes exist).
+
 Golden set (~180): verdict 40, numeric lookup 40, book quote/definition 25, method 20,
 chapter overview 15, notes vs. book 15, cross-chapter 15, out of scope/adversarial 10,
 plus an authorization category (tool ACL negatives).

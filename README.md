@@ -74,7 +74,7 @@ An agentic RAG assistant that answers questions about the book's arguments with 
 pip install -r requirements-rag.txt
 cp .env.example .env      # or add the new keys to your existing .env (see the note inside)
 python -m rag doctor      # checks keys, models, sources and analysis outputs
-python -m rag ingest      # notes, notebook chunks, claims registry, chapter map and the DuckDB results database
+python -m rag ingest      # notes, notebook chunks, claims registry, chapter map, DuckDB results database, search indexes
 pytest -q
 ```
 
