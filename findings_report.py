@@ -782,9 +782,9 @@ def build():
     rows = [["#", "Claim (chapter)", "Verdict", "Status"]]
     for n, c in [(1, "Power law: a few winners produce most of the value (7)"),
                  (2, "Competition destroys profits; monopolies capture value (3–4)"),
-                 (3, "Durability and last-mover advantage (5)"), (4, "Scorecard of the companies Thiel named (3, 5, 13)"),
+                 (3, "Durability and last-mover advantage (5)"), (4, "Scorecard of the companies Thiel named (3, 5, 6, 12, 13)"),
                  (5, "Indefinite optimism produces companies without plans (2, 6, 13)"),
-                 (6, "Stagnation: progress in bits, not atoms (1, conclusion)"), (7, "Sales matters as much as product (11)"),
+                 (6, "Stagnation: progress in bits, not atoms (1, conclusion)"), (7, "Sales matters as much as product (2, 11)"),
                  (8, "Computers complement humans (12)"), (9, "Founders and organisation (9–10)")]:
         done = load(n) is not None and n in SECTIONS
         status = "Pending" if load(n) is None else ("Final" if done else "Results in, write-up pending")

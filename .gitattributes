@@ -1,0 +1,10 @@
+# Never convert line endings in binary files. A PDF's first 8 KB can be plain text,
+# so git would otherwise treat it as text and core.autocrlf would corrupt it on checkout.
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.xlsx binary
+*.zip  binary
+*.tgz  binary

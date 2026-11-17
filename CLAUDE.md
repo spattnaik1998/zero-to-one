@@ -33,7 +33,7 @@ pip install -r requirements-rag.txt
 pytest -q                       # tests in tests/; CI runs these on every PR
 python -m rag doctor            # keys, models, sources, analysis outputs; --offline downgrades missing keys to warnings
 python -m rag manifest          # build/manifest.json: source hashes, git commit, models, licence status
-python -m rag ingest [book|notes|all]   # parse sources/ into build/candidates/*.jsonl (~20 s for the book)
+python -m rag ingest [notes|notebooks|registry|book|all]   # build/candidates/; all = notes + notebooks + registry (stops if the registry sources disagree)
 ```
 
 Parser tests run on synthetic PDFs built in `tests/conftest.py` with the same typography as the real sources. `tests/test_real_sources.py` checks the real book and notes; the book test is skipped wherever the book is absent (always in CI), while the notes test runs everywhere because the notes are committed. The book parser's layout constants (font sizes, drop cap, indent) match the development copy; a new edition must pass `check_structure` and `test_real_sources.py` before its chunks are trusted.
@@ -60,12 +60,12 @@ When printing notebook contents from a shell, set `PYTHONIOENCODING=utf8`: the n
 
 **`rag/`** reads settings through `rag/config.py` from the same nearest `.env` as `thiel_common`. Keep every key (SEC, Census, FRED, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) in that one file: a closer second `.env` would hide the notebooks' keys. Template: `.env.example`. Claude handles reasoning (`CLAUDE_MODEL`, default `claude-opus-5-5`; `CLAUDE_PROVIDER` selects the platform). OpenAI handles embeddings only, with the model pinned in `OPENAI_EMBEDDING_MODEL`. Changing that model means re-embedding every index.
 
-**`sources/book/`** holds the book. It is git-ignored and must never be committed, even if asked: the GitHub repo is public and the book is copyrighted. Client builds must refuse to run while `RAG_BOOK_LICENSED` is false. **`sources/notes/`** holds the analyst's reading notes, which the analyst chose to publish; they are tracked, so CI's real-source notes test runs on them.
+**The book is out of the corpus** (scope decision): the assistant works from the notes and the analysis, and Thiel's words appear only as the notebooks' claim-cell quotations. `rag/ingest/book.py` stays for local use (`ingest book`). **`sources/book/`** holds a local copy of the book. It is git-ignored and must never be committed, even if asked: the GitHub repo is public and the book is copyrighted. Client builds must refuse to run while `RAG_BOOK_LICENSED` is false. **`sources/notes/`** holds the analyst's reading notes, which the analyst chose to publish; they are tracked, so CI's real-source notes test runs on them.
 
 ## Conventions
 
 - New notebooks go in `notebooks/` and follow the existing shape: a markdown cell quoting the claim and chapter, setup (the two `sys.path` lines that find the repo root, then `import thiel_common as tc; tc.style()`), analysis cells, and a final "Verdict inputs and check cell" that writes the summary JSON.
 - Figure and table names are prefixed `hN_` (`h2_fig3_airlines_bigtech`, `h2a_cross_section_slopes`).
-- Verdicts appear in three places that must agree: `VERDICTS` in `findings_report.py`, the "Findings" table in `README.md`, and the scorecard claim text in `build()`. `README.md` also has the notebook/data table. Update all of them when a verdict changes or a notebook is added.
+- Verdicts appear in three places that must agree: `VERDICTS` in `findings_report.py`, the "Findings" table in `README.md`, and the scorecard claim text in `build()`. Chapters must also agree between each notebook's heading, the README row and the scorecard. `rag/ingest/registry.py` checks both, and `tests/test_registry.py::test_the_real_repository_is_consistent` fails CI on any mismatch. `README.md` also has the notebook/data table. Update all of them when a verdict changes or a notebook is added.
 - `H1_PROVISIONAL` at the top of `findings_report.py` switches the H1 section and scorecard to provisional wording. The RAG claims registry must carry the same status, and the answer verifier must give no verdict for a provisional or untested claim.
 - Each `rag/` subpackage's `__init__.py` lists its planned modules and the spec section they implement. Keep those lists current as modules land.
