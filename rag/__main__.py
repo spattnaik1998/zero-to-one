@@ -3,7 +3,7 @@
     python -m rag doctor            check keys, models, sources and analysis outputs
     python -m rag doctor --offline  same, but missing API keys are warnings (CI, no secrets)
     python -m rag manifest          write build/manifest.json for the current sources
-    python -m rag ingest [notes|notebooks|registry|tables|all]
+    python -m rag ingest [notes|notebooks|registry|tables|index|all]
                                     build candidate files in build/candidates/
 """
 from __future__ import annotations
@@ -74,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--offline", action="store_true", help="treat missing API keys as warnings")
     sub.add_parser("manifest", help="write build/manifest.json")
     i = sub.add_parser("ingest", help="build candidate files in build/candidates/")
-    i.add_argument("what", nargs="?", choices=["notes", "notebooks", "registry", "tables", "all"], default="all")
+    i.add_argument("what", nargs="?", choices=["notes", "notebooks", "registry", "tables", "index", "all"], default="all")
     args = p.parse_args(argv)
 
     if args.cmd == "doctor":
@@ -87,8 +87,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def ingest(settings, what: str) -> int:
-    from .ingest.run import (RegistryError, TablesError, ingest_notebooks, ingest_notes, ingest_registry,
-                             ingest_tables)
+    from .ingest.run import (IndexBuildError, RegistryError, TablesError, ingest_index, ingest_notebooks,
+                             ingest_notes, ingest_registry, ingest_tables)
     if what in ("notes", "all"):
         r = ingest_notes(settings)
         print(f"notes: {r['bullets']} bullets ({r['opinion_bullets']} opinion), {r['corrections']} corrections; "
@@ -124,6 +124,15 @@ def ingest(settings, what: str) -> int:
               f"tables not traced to a notebook cell: {r['untraced_tables'] or 'none'}")
         for out in r["output"]:
             print(f"  -> {out}")
+    if what in ("index", "all"):
+        try:
+            r = ingest_index(settings)
+        except IndexBuildError as e:
+            print(f"index: FAILED, {e}")
+            return 1
+        print(f"index: {r['counts']} documents, {r['dims']}-dim {r['model']} vectors; "
+              f"{r['api_calls']} API call(s), {r['tokens']} tokens, {r['cache_hits']} from cache")
+        print(f"  -> {r['output']}")
     return 0
 
 

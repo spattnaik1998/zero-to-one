@@ -16,10 +16,12 @@ Built (`python -m rag ingest` writes build/candidates/):
   tables.py     output/ -> DuckDB: the 46 results tables as-is, every summary value addressed by
                 path (summary_values), schema cards and figure captions; verify_database()
                 compares every cell and value with the source files
+  embed.py      OpenAI embeddings with the pinned model, cached on disk by (model, text)
+  index.py      three search indexes (notes, analysis, catalog) in indexes.duckdb; each
+                document keeps its cited text and a context-prefixed text for search
   run.py        runs the steps and writes the candidate files
 
 Planned:
-  embed.py      chunk vectors with the pinned OPENAI_EMBEDDING_MODEL
   panels.py     phase 3: cleaned thiel_common panels as read-only views
 
 Rules: candidates are for development until the release gate passes; publishing must

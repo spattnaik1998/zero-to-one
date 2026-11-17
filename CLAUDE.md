@@ -33,7 +33,8 @@ pip install -r requirements-rag.txt
 pytest -q                       # tests in tests/; CI runs these on every PR
 python -m rag doctor            # keys, models, sources, analysis outputs; --offline downgrades missing keys to warnings
 python -m rag manifest          # build/manifest.json: source hashes, git commit, models, licence status
-python -m rag ingest [notes|notebooks|registry|tables|all]   # build/candidates/; all runs every step; stops if the registry sources disagree or the DuckDB copy differs from output/
+python -m rag ingest [notes|notebooks|registry|tables|index|all]   # build/candidates/; all runs every step; stops if the registry sources disagree or the DuckDB copy differs from output/
+                                # `index` calls OpenAI (embeddings are cached in build/cache/, so rebuilds of unchanged text are free)
 ```
 
 Parser tests run on a synthetic notes PDF built in `tests/conftest.py` with the same typography as the real notes, and on synthetic notebooks and repos built inside the tests. `tests/test_real_sources.py` checks the real notes, and `tests/test_registry.py::test_the_real_repository_is_consistent` checks the real notebooks, README and `findings_report.py`; both run in CI because those files are committed.
