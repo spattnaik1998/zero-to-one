@@ -10,7 +10,6 @@ data/
 
 # Ask Zero to One build
 sources/book/
-sources/notes/
 build/
 .pytest_cache/
 
