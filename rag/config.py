@@ -54,10 +54,6 @@ def read_dotenv(start: Path = ROOT) -> dict[str, str]:
     return parse_dotenv(f.read_text(encoding="utf-8", errors="ignore")) if f else {}
 
 
-def _flag(value: str | None) -> bool:
-    return (value or "").strip().lower() in ("1", "true", "yes", "on")
-
-
 @dataclass(frozen=True)
 class Settings:
     claude_provider: str            # anthropic | bedrock | vertex | foundry
@@ -65,7 +61,6 @@ class Settings:
     anthropic_api_key: str | None   # needed only when claude_provider == "anthropic"
     openai_api_key: str | None
     embedding_model: str | None     # pinned: query vectors must match the released index
-    book_licensed: bool             # phase 0 exit criterion; client builds refuse to run while False
     sources_dir: Path
     build_dir: Path
 
@@ -100,7 +95,6 @@ def load_settings(environ: Mapping[str, str] | None = None,
         anthropic_api_key=get("ANTHROPIC_API_KEY"),
         openai_api_key=get("OPENAI_API_KEY"),
         embedding_model=get("OPENAI_EMBEDDING_MODEL"),
-        book_licensed=_flag(get("RAG_BOOK_LICENSED")),
         sources_dir=ROOT / (get("RAG_SOURCES_DIR") or "sources"),
         build_dir=ROOT / (get("RAG_BUILD_DIR") or "build"),
     )

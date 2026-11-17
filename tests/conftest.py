@@ -1,7 +1,7 @@
-"""Synthetic PDFs with the same typography as the book and the notes.
+"""A synthetic PDF with the same typography as the analyst's notes.
 
-The real sources are copyrighted or private and never reach CI, so the parser
-tests run on these fixtures. Text is placeholder; only the layout matters.
+The parser tests run on it so they cover layout cases the real notes do not
+contain. Text is placeholder; only the layout matters.
 """
 from pathlib import Path
 
@@ -17,68 +17,6 @@ def put(c, x, base, text, font="Times-Roman", size=15.0):
     c.setFont(font, size)
     c.drawString(x, H - base, text)
     return x + c.stringWidth(text, font, size)
-
-
-def drop_cap(c, letter_, base):
-    return put(c, 77, base, letter_, size=45.0)
-
-
-@pytest.fixture
-def book_pdf(tmp_path) -> Path:
-    path = tmp_path / "book.pdf"
-    c = canvas.Canvas(str(path), pagesize=letter)
-    sp = 4
-
-    # p1: front matter, ignored
-    put(c, 77, 100, "Copyright fixture line.", size=11.2)
-    c.showPage()
-
-    # p2: preface with label, title, drop cap and small-caps opening
-    put(c, 77, 125, "Preface", "Times-Italic", 21.2)
-    put(c, 200, 185, "ZERO TO ONE", size=21.2)
-    x = drop_cap(c, "E", 266) + 2
-    x = put(c, x, 248, "VERY MOMENT", size=11.2) + sp
-    put(c, x, 248, "in this fixture happens once.")
-    put(c, 112, 266, "This line sits beside the cap.")
-    put(c, 77, 284, "Back at the margin, the paragraph ends.")
-    put(c, 92, 302, "A new paragraph starts here and continues on the dot-")
-    c.showPage()
-
-    # p3: continuation, section with a superscript, caption, subsection, small caps at the margin
-    put(c, 77, 90, "com page that follows.")
-    put(c, 200, 140, "A FIXTURE SECTION", size=21.2)
-    x = put(c, 92, 180, "The value grows to 10")
-    x = put(c, x, 174, "30", size=11.2)
-    put(c, x, 180, "—a large number.")
-    put(c, 300, 220, "Figure caption text", size=11.2)
-    put(c, 77, 260, "A Fixture Subsection", "Times-Italic", 16.9)
-    put(c, 92, 300, "Text under the subsection.")
-    put(c, 77, 318, "SMALL CAPS AT THE MARGIN.", size=11.2)
-    c.showPage()
-
-    # p4: chapter 1
-    put(c, 150, 121, "THE CHALLENGE OF THE FUTURE", size=21.2)
-    x = drop_cap(c, "W", 194) + 2
-    x = put(c, x, 176, "HENEVER", size=11.2) + sp
-    put(c, x, 176, "a fixture opens, it says so.")
-    put(c, 125, 194, "beside the drop cap here.")
-    put(c, 77, 212, "And back to the margin.")
-    c.showPage()
-
-    # p5: conclusion
-    put(c, 77, 125, "Conclusion", "Times-Italic", 21.2)
-    put(c, 150, 185, "STAGNATION OR SINGULARITY?", size=21.2)
-    x = drop_cap(c, "I", 266) + 2
-    x = put(c, x, 248, "F THE FIXTURE", size=11.2) + sp
-    put(c, x, 248, "ends, it ends here.")
-    c.showPage()
-
-    # p6: back matter, must stop the parser
-    put(c, 77, 125, "Acknowledgments", "Times-Italic", 21.2)
-    put(c, 77, 200, "Thanks to everyone.")
-    c.showPage()
-    c.save()
-    return path
 
 
 def _rule(c, top):

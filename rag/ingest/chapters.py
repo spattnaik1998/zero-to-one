@@ -1,7 +1,7 @@
 """The book's structure: preface (0), chapters 1-14, conclusion (15).
 
-Both parsers map what they find onto this list, so a chapter number means the
-same thing in the book index, the notes index, the chapter map and the registry.
+The notes parser and the notebook headings map onto this list, so a chapter number
+means the same thing in the notes index, the chapter map and the claims registry.
 """
 from __future__ import annotations
 
@@ -45,14 +45,3 @@ def normalize(title: str) -> str:
     """Compare titles ignoring case, curly quotes, punctuation and spacing."""
     t = title.replace("’", "'").replace("‘", "'").casefold()
     return re.sub(r"[^a-z0-9]", "", t)
-
-
-_BY_TITLE = {normalize(c.title): c for c in CHAPTERS}
-
-
-def match_title(title: str) -> Chapter:
-    """Chapter for a heading such as 'PARTY LIKE IT'S 1999'. Raises ValueError if unknown."""
-    c = _BY_TITLE.get(normalize(title))
-    if c is None:
-        raise ValueError(f"heading {title!r} does not match any chapter of the book")
-    return c

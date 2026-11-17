@@ -78,7 +78,7 @@ python -m rag ingest      # notes, notebook chunks, claims registry and chapter 
 pytest -q
 ```
 
-The book and the notes go in `sources/book/` and `sources/notes/`. Neither is committed; see [`sources/README.md`](sources/README.md).
+The analyst's notes are in `sources/notes/`. The book is not part of the corpus; see [`sources/README.md`](sources/README.md).
 
 ## How it fits together
 
