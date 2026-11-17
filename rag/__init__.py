@@ -1,4 +1,4 @@
-"""Ask Zero to One: agentic RAG over the book, the analyst's notes and the H1-H8 analysis.
+"""Ask Zero to One: agentic RAG over the analyst's notes and the H1-H8 analysis.
 
 Design: docs/agentic_rag_spec.md. Reference architecture: docs/architecture_v3.png.
 

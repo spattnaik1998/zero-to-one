@@ -3,8 +3,10 @@
     python -m rag doctor            check keys, models, sources and analysis outputs
     python -m rag doctor --offline  same, but missing API keys are warnings (CI, no secrets)
     python -m rag manifest          write build/manifest.json for the current sources
-    python -m rag ingest [book|notes|all]
-                                    parse the sources into build/candidates/*.jsonl
+    python -m rag ingest [notes|notebooks|registry|book|all]
+                                    build candidate files in build/candidates/; `all` is
+                                    notes + notebooks + registry (the book is out of scope
+                                    and runs only when asked for)
 """
 from __future__ import annotations
 
@@ -50,11 +52,15 @@ def doctor(offline: bool) -> int:
 
     found = sources.find_sources(s.sources_dir)
     book, notes = found["book"], found["notes"]
-    add("OK" if len(book) == 1 else ("FAIL" if not book else "WARN"), "book source",
-        f"{len(book)} PDF in {s.sources_dir.name}/book" + ("" if len(book) == 1 else " (expected exactly 1)"))
     add("OK" if notes else "FAIL", "notes source", f"{len(notes)} PDF in {s.sources_dir.name}/notes")
-    add("OK" if s.book_licensed else "WARN", "book licence",
-        "confirmed" if s.book_licensed else "not confirmed: development only, client builds blocked (phase 0)")
+    # The book is out of the corpus (scope decision); it is only checked when present.
+    if not book:
+        add("OK", "book source", "none (the book is out of scope; not needed)")
+    else:
+        add("OK" if len(book) == 1 else "WARN", "book source",
+            f"{len(book)} PDF in {s.sources_dir.name}/book (optional)" + ("" if len(book) == 1 else "; expected 1"))
+        add("OK" if s.book_licensed else "WARN", "book licence",
+            "confirmed" if s.book_licensed else "not confirmed: local development use only")
 
     have = [n for n in range(1, 9) if (ROOT / "output" / f"h{n}_summary.json").is_file()]
     add("OK" if len(have) == 8 else "WARN", "analysis outputs",
@@ -77,8 +83,8 @@ def main(argv: list[str] | None = None) -> int:
     d = sub.add_parser("doctor", help="check that the build can run")
     d.add_argument("--offline", action="store_true", help="treat missing API keys as warnings")
     sub.add_parser("manifest", help="write build/manifest.json")
-    i = sub.add_parser("ingest", help="parse the book and notes into build/candidates/")
-    i.add_argument("what", nargs="?", choices=["book", "notes", "all"], default="all")
+    i = sub.add_parser("ingest", help="build candidate files in build/candidates/")
+    i.add_argument("what", nargs="?", choices=["notes", "notebooks", "registry", "book", "all"], default="all")
     args = p.parse_args(argv)
 
     if args.cmd == "doctor":
@@ -91,8 +97,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def ingest(settings, what: str) -> int:
-    from .ingest.run import ingest_book, ingest_notes   # pdfplumber is only needed here
-    if what in ("book", "all"):
+    from .ingest.run import RegistryError, ingest_book, ingest_notebooks, ingest_notes, ingest_registry
+    if what == "book":
         r = ingest_book(settings)
         print(f"book: {len(r['parts'])} parts, {r['paragraphs']} paragraphs, {r['chunks']} chunks "
               f"(words min {r['words']['min']}, median {r['words']['median']}, max {r['words']['max']})")
@@ -105,6 +111,23 @@ def ingest(settings, what: str) -> int:
         r = ingest_notes(settings)
         print(f"notes: {r['bullets']} bullets ({r['opinion_bullets']} opinion), {r['corrections']} corrections; "
               f"chapters without notes: {r['chapters_without_notes'] or 'none'}")
+        for out in r["output"]:
+            print(f"  -> {out}")
+    if what in ("notebooks", "all"):
+        r = ingest_notebooks(settings)
+        print(f"notebooks: {r['chunks']} chunks {r['kinds']}, {r['thiel_quotes']} Thiel quotations; "
+              f"per hypothesis {r['per_hypothesis']}")
+        print(f"  -> {r['output']}")
+    if what in ("registry", "all"):
+        try:
+            r = ingest_registry(settings)
+        except RegistryError as e:
+            print(f"registry: FAILED, {e}")
+            return 1
+        print("registry: " + ", ".join(f"{cid} {status}" + (f" ({verdict})" if verdict else "")
+                                       for cid, status, verdict in r["claims"]))
+        print(f"  untested chapters: {r['untested_chapters']}"
+              + ("" if r["notes_linked"] else "; notes not found, so no note links"))
         for out in r["output"]:
             print(f"  -> {out}")
     return 0

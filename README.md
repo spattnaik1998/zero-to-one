@@ -68,13 +68,13 @@ To exercise the code without network access or keys, set `THIEL_SYNTHETIC=1`. Th
 
 ## Ask Zero to One (in development)
 
-An agentic RAG assistant that answers questions about the book's arguments with cited evidence from three sources: the book, the analyst's reading notes, and the findings above. Claude handles reasoning and OpenAI handles embeddings. The design documents are not published here; [`docs/README.md`](docs/README.md) describes them and summarises the architecture.
+An agentic RAG assistant that answers questions about the book's arguments with cited evidence from the analyst's reading notes and the findings above (Thiel's own words appear only as the short quotations in the notebooks). Claude handles reasoning and OpenAI handles embeddings. The design documents are not published here; [`docs/README.md`](docs/README.md) describes them and summarises the architecture.
 
 ```bash
 pip install -r requirements-rag.txt
 cp .env.example .env      # or add the new keys to your existing .env (see the note inside)
 python -m rag doctor      # checks keys, models, sources and analysis outputs
-python -m rag ingest      # parses the book and notes into build/candidates/
+python -m rag ingest      # notes, notebook chunks, claims registry and chapter map into build/candidates/
 pytest -q
 ```
 
