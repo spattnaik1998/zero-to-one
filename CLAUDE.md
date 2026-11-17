@@ -36,7 +36,7 @@ python -m rag manifest          # build/manifest.json: source hashes, git commit
 python -m rag ingest [book|notes|all]   # parse sources/ into build/candidates/*.jsonl (~20 s for the book)
 ```
 
-Parser tests run on synthetic PDFs built in `tests/conftest.py` with the same typography as the real sources (the real files never reach CI). `tests/test_real_sources.py` checks the real book and notes and is skipped when `sources/` is empty. The book parser's layout constants (font sizes, drop cap, indent) match the development copy; a new edition must pass `check_structure` and `test_real_sources.py` before its chunks are trusted.
+Parser tests run on synthetic PDFs built in `tests/conftest.py` with the same typography as the real sources. `tests/test_real_sources.py` checks the real book and notes; the book test is skipped wherever the book is absent (always in CI), while the notes test runs everywhere because the notes are committed. The book parser's layout constants (font sizes, drop cap, indent) match the development copy; a new edition must pass `check_structure` and `test_real_sources.py` before its chunks are trusted.
 
 Everything under `output/` (figures, tables, summary JSONs, the PDF) is committed. A notebook run, including a `THIEL_SYNTHETIC=1` run, overwrites those tracked files in place, because synthetic mode writes to the same paths. After a synthetic test, restore them with `git checkout -- output/` and don't commit them.
 
@@ -60,7 +60,7 @@ When printing notebook contents from a shell, set `PYTHONIOENCODING=utf8`: the n
 
 **`rag/`** reads settings through `rag/config.py` from the same nearest `.env` as `thiel_common`. Keep every key (SEC, Census, FRED, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) in that one file: a closer second `.env` would hide the notebooks' keys. Template: `.env.example`. Claude handles reasoning (`CLAUDE_MODEL`, default `claude-opus-5-5`; `CLAUDE_PROVIDER` selects the platform). OpenAI handles embeddings only, with the model pinned in `OPENAI_EMBEDDING_MODEL`. Changing that model means re-embedding every index.
 
-**`sources/book/` and `sources/notes/`** hold the book and the analyst's notes. They are git-ignored and must never be committed: the GitHub repo is public, and the book is copyrighted. Client builds must refuse to run while `RAG_BOOK_LICENSED` is false.
+**`sources/book/`** holds the book. It is git-ignored and must never be committed, even if asked: the GitHub repo is public and the book is copyrighted. Client builds must refuse to run while `RAG_BOOK_LICENSED` is false. **`sources/notes/`** holds the analyst's reading notes, which the analyst chose to publish; they are tracked, so CI's real-source notes test runs on them.
 
 ## Conventions
 
