@@ -1,16 +1,24 @@
 """The agent's tools, each reading one store of a pinned, verified release (spec section 6.3).
 
 A `Toolset` is bound to one `Release` for its whole life, so every answer in a session
-comes from the same corpus version. `call(name, input)` validates the input (strict tool
-schemas cannot express ranges, so limits are enforced here) and returns a JSON-able dict.
-Every result item carries `source_id` and `voice`, which the answer verifier and citations use.
+comes from the same corpus version. `call(name, input)` validates the input against the
+tool's schema and its limits (strict tool schemas cannot express ranges) and returns a
+JSON-able dict. Every result item carries `source_id` and `voice`, which the answer
+verifier and citations use.
 
-query_table is the only tool that takes free-form input. It runs on a read-only DuckDB
-connection with file and network access disabled and the configuration locked, accepts one
-SELECT statement, caps the rows returned, and stops queries that run too long.
+query_table is the only tool that takes free-form input. Its guards, all of which matter:
+  - the statement must parse as exactly one SELECT;
+  - an allow-list over DuckDB's parse tree: only this database's tables (or names the query
+    defines in WITH), only harmless table functions, no functions that read settings, the
+    environment or the system catalog (these would expose local paths);
+  - a read-only connection with external access disabled and the configuration locked;
+  - memory, thread and time limits, with DuckDB's temporary files kept outside the release
+    (spill files inside it would make the release fail its integrity check);
+  - a row cap, fetched without rewriting the query so its ORDER BY holds.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import math
@@ -20,6 +28,7 @@ from pathlib import Path
 
 import duckdb
 
+from ..ingest.index import read_jsonl
 from ..release import Release
 from ..retrieval import HybridIndex
 
@@ -28,7 +37,13 @@ DEFAULT_K = 5
 MAX_ROWS = 200
 DEFAULT_ROWS = 50
 QUERY_SECONDS = 5.0
+MEMORY_LIMIT = "512MB"
 KINDS = ("claim", "method", "result", "caveat")
+SAFE_TABLE_FUNCTIONS = frozenset({"range", "generate_series", "unnest"})
+DENIED_FUNCTIONS = frozenset({"current_setting", "getenv", "current_database", "current_catalog", "current_schema",
+                              "current_schemas", "current_user", "user", "session_user", "which_secret", "version",
+                              "platform", "query", "query_table"})
+DENIED_PREFIXES = ("duckdb_", "pragma_", "read_", "glob", "sniff_", "parquet_", "iceberg_", "delta_")
 
 
 class ToolError(ValueError):
@@ -55,48 +70,137 @@ def _str(value, name: str, required: bool = True) -> str | None:
 
 
 def _json_value(v):
-    if isinstance(v, Decimal):                       # ROUND()/CAST give DECIMAL; return a number, not text
+    """A DuckDB value as plain JSON: numbers stay numbers (DECIMAL too), NaN/inf become null,
+    lists and structs recurse, bytes become base64, anything else (dates, times) ISO text."""
+    if isinstance(v, Decimal):
         v = float(v)
-    if isinstance(v, float) and not math.isfinite(v):
-        return None
-    if isinstance(v, (str, int, float, bool)) or v is None:
+    if isinstance(v, float):
+        return v if math.isfinite(v) else None
+    if isinstance(v, (str, int, bool)) or v is None:
         return v
-    return str(v)                                     # dates, decimals
+    if isinstance(v, (list, tuple)):
+        return [_json_value(x) for x in v]
+    if isinstance(v, dict):
+        return {str(k): _json_value(x) for k, x in v.items()}
+    if isinstance(v, (bytes, bytearray, memoryview)):
+        return {"base64": base64.b64encode(bytes(v)).decode("ascii")}
+    return v.isoformat() if hasattr(v, "isoformat") else str(v)
+
+
+def _typed(value_type: str, value_num, value_text):
+    """A summary value with its original JSON type (summary_values stores ints and bools as floats)."""
+    if value_type == "int":
+        return int(value_num)
+    if value_type == "float":
+        return _json_value(value_num)
+    if value_type == "bool":
+        return value_text == "true"
+    return value_text
+
+
+def _walk(node, out: dict) -> None:
+    if isinstance(node, dict):
+        kind = node.get("type")
+        if kind == "BASE_TABLE":
+            out["tables"].append((node.get("catalog_name", ""), node.get("schema_name", ""), node.get("table_name", "")))
+        elif kind == "TABLE_FUNCTION":
+            out["table_functions"].append(node.get("function", {}).get("function_name", ""))
+        if node.get("class") == "FUNCTION":
+            out["functions"].append(node.get("function_name", ""))
+        for entry in node.get("cte_map", {}).get("map", []) if isinstance(node.get("cte_map"), dict) else []:
+            out["ctes"].add(entry.get("key", ""))
+        for v in node.values():
+            _walk(v, out)
+    elif isinstance(node, list):
+        for v in node:
+            _walk(v, out)
+
+
+def check_sql(sql: str, allowed_tables: set[str]) -> None:
+    """Raise ToolError unless `sql` is one SELECT over allowed tables and safe functions."""
+    try:
+        statements = duckdb.extract_statements(sql)
+    except duckdb.Error as e:
+        raise ToolError(f"SQL does not parse: {str(e).splitlines()[0]}")
+    if len(statements) != 1:
+        raise ToolError("send exactly one SQL statement")
+    if statements[0].type != duckdb.StatementType.SELECT:
+        raise ToolError("only SELECT queries are allowed (WITH ... SELECT is fine)")
+    with duckdb.connect() as con:                     # in-memory; used only to parse
+        tree = json.loads(con.execute("SELECT json_serialize_sql(?)", [sql]).fetchone()[0])
+    if tree.get("error"):
+        raise ToolError(f"SQL does not parse: {tree.get('error_message', 'unknown error')}")
+    found = {"tables": [], "table_functions": [], "functions": [], "ctes": set()}
+    _walk(tree, found)
+    for catalog, schema, table in found["tables"]:
+        if catalog or schema not in ("", "main") or (table not in allowed_tables and table not in found["ctes"]):
+            name = ".".join(x for x in (catalog, schema, table) if x)
+            raise ToolError(f"table {name!r} is not available; query the results tables, summary_values, "
+                            "catalog_tables or catalog_figures")
+    for fn in found["table_functions"]:
+        if fn.lower() not in SAFE_TABLE_FUNCTIONS:
+            raise ToolError(f"table function {fn!r} is not allowed (allowed: {sorted(SAFE_TABLE_FUNCTIONS)})")
+    for fn in found["functions"]:
+        low = fn.lower()
+        if low in DENIED_FUNCTIONS or low.startswith(DENIED_PREFIXES):
+            raise ToolError(f"function {fn!r} is not allowed")
 
 
 class Toolset:
-    def __init__(self, release: Release, embedder):
+    def __init__(self, release: Release, embedder, scratch_dir: Path | None = None):
         model = release.manifest["models"]["embedding_model"]
         if embedder.model != model:
             raise ValueError(f"release {release.release_id} was embedded with {model}; "
                              f"the query embedder uses {embedder.model}")
         self.release, self.embedder = release, embedder
+        # DuckDB's temporary files must live outside the release (build/releases/<id>/ -> build/cache/)
+        self.scratch_dir = scratch_dir or release.path.parent.parent / "cache" / "duckdb_tmp"
+        self.scratch_dir.mkdir(parents=True, exist_ok=True)
         self.indexes = {name: HybridIndex.load(release.file("indexes.duckdb"), name)
                         for name in ("notes", "analysis", "catalog")}
         self.claims = {c["id"]: c for c in self._json("claims_registry.json")}
         self.chapters = {c["number"]: c for c in self._json("chapter_map.json")}
         self.cards = {c["name"]: c for c in self._json("schema_cards.json")}
         self.figures = {f["name"]: f for f in self._json("figures.json")}
-        self.notes = {n["id"]: n for n in map(json.loads, self.release.file("notes_chunks.jsonl")
-                                               .read_text(encoding="utf-8").splitlines()) if n}
+        self.notes = {n["id"]: n for n in read_jsonl(release.file("notes_chunks.jsonl"))}
         self.db_path = release.file("analysis.duckdb")
+        with self._connect() as con:                  # the release is immutable: read these once
+            self.tables = {r[0] for r in con.execute(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'").fetchall()}
+            rows = con.execute("SELECT hypothesis, path, value_type, value_num, value_text FROM summary_values "
+                               "WHERE path NOT LIKE '%.%' AND path NOT LIKE '%[%' ORDER BY hypothesis, path").fetchall()
+        self.headline = {}
+        for hyp, path, vtype, vnum, vtext in rows:
+            self.headline.setdefault(hyp, []).append(
+                {"source_id": f"summary:{hyp}:{path}", "path": path, "value": _typed(vtype, vnum, vtext)})
 
     def _json(self, name: str):
         return json.loads(self.release.file(name).read_text(encoding="utf-8"))
 
     # ------------------------------------------------------------ dispatch
     def call(self, name: str, tool_input: dict) -> dict:
-        handler = getattr(self, f"tool_{name}", None)
-        if handler is None or name not in {d["name"] for d in TOOL_DEFINITIONS}:
-            raise ToolError(f"unknown tool {name!r}")
+        definition = DEFINITIONS.get(name)
+        if definition is None:
+            raise ToolError(f"unknown tool {name!r}; tools are {sorted(DEFINITIONS)}")
         if not isinstance(tool_input, dict):
             raise ToolError("tool input must be an object")
-        allowed = set(next(d for d in TOOL_DEFINITIONS if d["name"] == name)["input_schema"]["properties"])
-        extra = set(tool_input) - allowed
+        schema = definition["input_schema"]
+        extra = set(tool_input) - set(schema["properties"])
         if extra:
-            raise ToolError(f"unexpected argument(s) {sorted(extra)}; allowed: {sorted(allowed)}")
-        result = handler(**tool_input)
+            raise ToolError(f"unexpected argument(s) {sorted(extra)}; allowed: {sorted(schema['properties'])}")
+        missing = [k for k in schema["required"] if k not in tool_input]
+        if missing:
+            raise ToolError(f"missing required argument(s) {missing}")
+        result = getattr(self, f"tool_{name}")(**tool_input)
         return {"tool": name, "release_id": self.release.release_id, **result}
+
+    def _hypothesis(self, value) -> str | None:
+        if value is None:
+            return None
+        hyp = _str(value, "hypothesis").upper()
+        if hyp not in self.claims:
+            raise ToolError(f"hypothesis must be one of {sorted(self.claims)}")
+        return hyp
 
     # ------------------------------------------------------------ search
     def _search(self, index: str, query, k, where: dict) -> list:
@@ -117,8 +221,7 @@ class Toolset:
             "text": h.text} for h in hits]}
 
     def tool_search_analysis(self, query, hypothesis=None, kind=None, k=None) -> dict:
-        if hypothesis is not None and hypothesis not in self.claims:
-            raise ToolError(f"hypothesis must be one of {sorted(self.claims)}")
+        hypothesis = self._hypothesis(hypothesis)
         if kind is not None and kind not in KINDS:
             raise ToolError(f"kind must be one of {list(KINDS)}")
         hits = self._search("analysis", query, k, {"hypothesis": hypothesis, "kind": kind})
@@ -131,9 +234,7 @@ class Toolset:
     def tool_find_data(self, query, type=None, hypothesis=None, k=None) -> dict:
         if type is not None and type not in ("table", "figure"):
             raise ToolError("type must be 'table' or 'figure'")
-        if hypothesis is not None and hypothesis not in self.claims:
-            raise ToolError(f"hypothesis must be one of {sorted(self.claims)}")
-        hits = self._search("catalog", query, k, {"type": type, "hypothesis": hypothesis})
+        hits = self._search("catalog", query, k, {"type": type, "hypothesis": self._hypothesis(hypothesis)})
         return {"results": [{"source_id": h.doc_id, "voice": "evidence", "type": h.meta["type"],
                              "name": h.meta["name"], "hypothesis": h.meta["hypothesis"], "text": h.text}
                             for h in hits]}
@@ -142,25 +243,16 @@ class Toolset:
     def _claim_view(self, c: dict, full: bool) -> dict:
         view = {"source_id": f"claim:{c['id']}", "voice": "evidence", "id": c["id"], "title": c["title"],
                 "claim": c["claim"], "chapters": c["chapters"], "status": c["status"],
-                # verdicts and one-line summaries exist only for final claims (the registry enforces it)
+                # verdicts and one-line findings exist only for final claims (the registry enforces it)
                 "verdict": c["verdict"], "one_line": c["one_line"]}
         if full:
-            view.update({k: c[k] for k in ("thiel_quote", "sub_claims", "caveats", "notebook", "tables", "figures")})
-            view["note_ids"] = c["note_ids"]
-            view["headline_values"] = self._headline_values(c["id"])
+            view.update({k: c[k] for k in ("thiel_quote", "sub_claims", "caveats", "notebook", "tables", "figures",
+                                           "note_ids", "summary_keys")})
+            view["headline_values"] = self.headline.get(c["id"], [])
             if c["status"] != "final":
                 view["note"] = ("no verdict: this claim is " + c["status"].replace("_", " ")
                                 + "; do not state or imply one")
         return view
-
-    def _headline_values(self, hypothesis: str) -> list[dict]:
-        """Top-level scalar summary values (no nesting), cited by their summary_values path."""
-        with self._connect() as con:
-            rows = con.execute("SELECT path, value_type, value_num, value_text FROM summary_values "
-                               "WHERE hypothesis = ? AND path NOT LIKE '%.%' AND path NOT LIKE '%[%' "
-                               "ORDER BY path", [hypothesis]).fetchall()
-        return [{"source_id": f"summary:{hypothesis}:{p}", "path": p,
-                 "value": _json_value(vn) if t in ("int", "float") else vt} for p, t, vn, vt in rows]
 
     def tool_list_claims(self) -> dict:
         return {"results": [self._claim_view(c, full=False) for c in self.claims.values()]}
@@ -189,8 +281,7 @@ class Toolset:
         name = _str(name, "name")
         if name not in self.cards:
             raise ToolError(f"no table {name!r}; use find_data to look tables up")
-        c = self.cards[name]
-        return {"results": [{"source_id": f"table:{name}", "voice": "evidence", **c}]}
+        return {"results": [{"source_id": f"table:{name}", "voice": "evidence", **self.cards[name]}]}
 
     def tool_get_figure(self, name) -> dict:
         name = _str(name, "name")
@@ -203,20 +294,14 @@ class Toolset:
                              "file": f"figures/{name}.png"}]}
 
     def _connect(self):
-        return duckdb.connect(str(self.db_path), read_only=True,
-                              config={"enable_external_access": False, "lock_configuration": True})
+        return duckdb.connect(str(self.db_path), read_only=True, config={
+            "enable_external_access": False, "memory_limit": MEMORY_LIMIT, "threads": 2,
+            "temp_directory": str(self.scratch_dir), "lock_configuration": True})
 
     def tool_query_table(self, sql, max_rows=None) -> dict:
         sql = _str(sql, "sql").rstrip().rstrip(";").strip()
         cap = _int(max_rows, "max_rows", DEFAULT_ROWS, 1, MAX_ROWS)
-        try:
-            statements = duckdb.extract_statements(sql)
-        except duckdb.Error as e:
-            raise ToolError(f"SQL does not parse: {str(e).splitlines()[0]}")
-        if len(statements) != 1:
-            raise ToolError("send exactly one SQL statement")
-        if statements[0].type != duckdb.StatementType.SELECT:
-            raise ToolError("only SELECT queries are allowed (WITH ... SELECT is fine)")
+        check_sql(sql, self.tables)
         with self._connect() as con:
             timer = threading.Timer(QUERY_SECONDS, con.interrupt)
             timer.start()
@@ -230,12 +315,11 @@ class Toolset:
                 raise ToolError(f"query failed: {str(e).splitlines()[0]}")
             finally:
                 timer.cancel()
-        truncated = len(rows) > cap
         return {"results": [{
             "source_id": "query:" + hashlib.sha256(sql.encode("utf-8")).hexdigest()[:12],
-            "voice": "evidence", "sql": sql,
-            "columns": columns, "rows": [[_json_value(v) for v in r] for r in rows[:cap]],
-            "row_count": min(len(rows), cap), "truncated": truncated,
+            "voice": "evidence", "sql": sql, "columns": columns,
+            "rows": [[_json_value(v) for v in r] for r in rows[:cap]],
+            "row_count": min(len(rows), cap), "truncated": len(rows) > cap,
         }]}
 
 
@@ -275,8 +359,9 @@ TOOL_DEFINITIONS = [
      "input_schema": _schema({}, [])},
     {"name": "get_claim",
      "description": ("Full record for one claim: verdict (final claims only), one-line finding, Thiel's quote, "
-                     "sub-claims, caveats, tables, figures, linked notes and headline summary values. The only "
-                     "source of verdicts."),
+                     "sub-claims, caveats, tables, figures, linked notes, the summary's top-level keys and its "
+                     "top-level scalar values (some claims have none; query summary_values for nested values). "
+                     "The only source of verdicts."),
      "input_schema": _schema({"id": {"type": "string", "description": "Claim id, e.g. H2."}}, ["id"])},
     {"name": "get_chapter",
      "description": ("Everything about one chapter of the book: which claims test it (with verdicts if final), "
@@ -288,8 +373,9 @@ TOOL_DEFINITIONS = [
      "input_schema": _schema({"name": {"type": "string", "description": "Table name, e.g. h3c_top20_2014."}}, ["name"])},
     {"name": "query_table",
      "description": ("Run one read-only SELECT on the results database: the results tables (named like h2a_...), "
-                     "summary_values (hypothesis, path, value_num, value_text: every number in the summaries), "
-                     "catalog_tables and catalog_figures. Use it for every number you state."),
+                     "summary_values (hypothesis, path, value_type, value_num, value_text: every number in the "
+                     "summaries), catalog_tables and catalog_figures. Use it for every number you state. System "
+                     "tables, settings and file functions are not available."),
      "input_schema": _schema({"sql": {"type": "string", "description": "One SELECT (WITH ... SELECT allowed)."},
                               "max_rows": {"type": "integer",
                                            "description": f"Rows to return, 1-{MAX_ROWS} (default {DEFAULT_ROWS})."}},
@@ -298,6 +384,7 @@ TOOL_DEFINITIONS = [
      "description": "One figure's caption and image file, by name (from find_data or get_claim).",
      "input_schema": _schema({"name": {"type": "string", "description": "Figure name, e.g. h1_fig1_ccdf."}}, ["name"])},
 ]
+DEFINITIONS = {d["name"]: d for d in TOOL_DEFINITIONS}
 
 
 def tool_definitions(strict: bool = True) -> list[dict]:

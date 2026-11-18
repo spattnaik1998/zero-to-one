@@ -34,7 +34,8 @@ class Doc:
     meta: dict
 
 
-def _jsonl(path: Path) -> list[dict]:
+def read_jsonl(path: Path) -> list[dict]:
+    """Records of a JSON Lines file; blank lines are skipped."""
     return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
 
 
@@ -53,7 +54,7 @@ def hypothesis_titles(candidates: Path) -> dict[str, str]:
 
 def note_docs(candidates: Path) -> list[Doc]:
     out = []
-    for n in _jsonl(candidates / "notes_chunks.jsonl"):
+    for n in read_jsonl(candidates / "notes_chunks.jsonl"):
         label = "Analyst's view" if n["opinion"] else "Analyst's note"
         out.append(Doc("notes", n["id"], n["text"], f"{n['chapter_title']}. {label}: {n['text']}",
                        {"chapter": n["chapter"], "chapter_title": n["chapter_title"], "opinion": n["opinion"],
@@ -63,7 +64,7 @@ def note_docs(candidates: Path) -> list[Doc]:
 
 def analysis_docs(candidates: Path) -> list[Doc]:
     titles, out = hypothesis_titles(candidates), []
-    for c in _jsonl(candidates / "notebook_chunks.jsonl"):
+    for c in read_jsonl(candidates / "notebook_chunks.jsonl"):
         where = _context(f'{c["hypothesis"]} {titles.get(c["hypothesis"], "")}'.strip(), c["sub_claim"], c["section"])
         who = "Thiel, quoted in the claim" if c["voice"] == "thiel" else c["kind"]
         out.append(Doc("analysis", c["id"], c["text"], f"{where} ({who}): {c['text']}",

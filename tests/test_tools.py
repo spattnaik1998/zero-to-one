@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import duckdb
 import pytest
@@ -45,6 +46,8 @@ def toolset(candidates, hash_embedder, tmp_path):
                 "('GE', 3, 90, false), ('Odd', 4, NULL, false)) t(firm, rank_2014, rank_2025, still_top20)")
     con.execute("CREATE TABLE summary_values AS SELECT * FROM (VALUES "
                 "('H1', 'alpha', 'alpha', 'float', 1.8, '1.8', 'h1_summary.json'), "
+                "('H1', 'n_firms', 'n_firms', 'int', 39363.0, '39363', 'h1_summary.json'), "
+                "('H1', 'ok', 'ok', 'bool', 1.0, 'true', 'h1_summary.json'), "
                 "('H1', 'years[0]', 'years', 'int', 2011.0, '2011', 'h1_summary.json'), "
                 "('H1', 'top5[0].firm', 'top5', 'str', NULL, 'NVIDIA', 'h1_summary.json')) "
                 "t(hypothesis, path, top_key, value_type, value_num, value_text, source)")
@@ -139,7 +142,12 @@ def test_claims_carry_verdicts_only_when_final(toolset):
     assert h9["status"] == "untested" and "no verdict" in h9["note"] and h9["one_line"] is None
     h1 = toolset.call("get_claim", {"id": "H1"})["results"][0]
     assert h1["source_id"] == "claim:H1" and "note" not in h1
-    assert h1["headline_values"] == [{"source_id": "summary:H1:alpha", "path": "alpha", "value": 1.8}]
+    assert h1["headline_values"] == [                  # ints stay ints, bools stay bools
+        {"source_id": "summary:H1:alpha", "path": "alpha", "value": 1.8},
+        {"source_id": "summary:H1:n_firms", "path": "n_firms", "value": 39363},
+        {"source_id": "summary:H1:ok", "path": "ok", "value": True}]
+    assert isinstance(h1["headline_values"][1]["value"], int) and h1["summary_keys"] == ["alpha"]
+    assert toolset.call("get_claim", {"id": "H3"})["results"][0]["headline_values"] == []
 
 
 def test_get_chapter_tested_and_untested(toolset):
@@ -200,13 +208,22 @@ def test_query_source_ids_differ_per_query(toolset):
     ("SELECT 1; SELECT 2", "exactly one"),
     ("SELECT 1; DELETE FROM h3c_top20_2014", "exactly one"),
     ("SELEC firm FROM h3c_top20_2014", "does not parse"),
-    ("SELECT * FROM read_csv('README.md')", "query failed"),        # file access disabled in the engine
-    ("SELECT * FROM glob('*')", "query failed"),
-    ("SELECT * FROM no_such_table", "query failed"),
+    ("SELECT * FROM read_csv('README.md')", "table function 'read_csv'"),
+    ("SELECT * FROM glob('*')", "table function 'glob'"),
+    ("SELECT * FROM no_such_table", "not available"),
+    ("SELECT firm FROM h3c_top20_2014 WHERE no_such_column = 1", "query failed"),
 ])
 def test_query_refuses_anything_but_one_select(toolset, sql, message):
     with pytest.raises(ToolError, match=message):
         toolset.call("query_table", {"sql": sql})
+
+
+def test_engine_still_blocks_files_without_the_allow_list(toolset):
+    """Second layer: even if the allow-list missed something, the connection cannot touch files."""
+    with toolset._connect() as con:
+        for sql in ("SELECT * FROM read_csv('README.md')", "COPY (SELECT 1) TO 'x.csv'", "ATTACH 'x.duckdb'"):
+            with pytest.raises(duckdb.Error):
+                con.execute(sql)
 
 
 def test_query_timeout(toolset, monkeypatch):
@@ -252,3 +269,75 @@ def test_real_release_tools():
                 f'SELECT count(*) FROM "{c[0]}" WHERE isnan("{c[1]}")').fetchone()[0]]
     finally:
         cache.close()
+
+
+# ---------------------------------------------------------------- code review findings
+@pytest.mark.parametrize("sql, message", [
+    ("SELECT path FROM duckdb_databases()", "table function 'duckdb_databases'"),
+    ("SELECT * FROM duckdb_settings()", "table function 'duckdb_settings'"),
+    ("SELECT current_setting('temp_directory')", "function 'current_setting'"),
+    ("SELECT getenv('USERNAME')", "function 'getenv'"),
+    ("SELECT version()", "function 'version'"),
+    ("SELECT * FROM query('SELECT 1')", "table function 'query'"),
+    ("SELECT * FROM information_schema.tables", "table 'information_schema.tables'"),
+    ("SELECT * FROM pg_catalog.pg_tables", "table 'pg_catalog.pg_tables'"),
+    ("SELECT * FROM other_db.main.h3c_top20_2014", "not available"),
+    ("SELECT * FROM h3c_top20_2014 WHERE firm IN (SELECT database_name FROM duckdb_databases())", "duckdb_databases"),
+])
+def test_system_catalog_settings_and_environment_are_not_reachable(toolset, sql, message):
+    """These parse as SELECT and passed the first guards; they exposed local paths and settings."""
+    with pytest.raises(ToolError, match=message):
+        toolset.call("query_table", {"sql": sql})
+
+
+@pytest.mark.parametrize("sql", [
+    "WITH top AS (SELECT firm FROM h3c_top20_2014 WHERE still_top20) SELECT count(*) FROM top",
+    "SELECT * FROM main.h3c_top20_2014",
+    "SELECT r.range FROM range(3) r",
+    "SELECT upper(firm), round(rank_2014 / 2.0, 1) FROM h3c_top20_2014",
+    "SELECT * FROM summary_values s JOIN h3c_top20_2014 t ON s.path = t.firm",
+])
+def test_ordinary_analysis_queries_still_work(toolset, sql):
+    assert toolset.call("query_table", {"sql": sql})["results"][0]["columns"]
+
+
+def test_duckdb_temp_files_live_outside_the_release(toolset):
+    with toolset._connect() as con:                    # not through query_table, which refuses current_setting
+        temp = Path(con.execute("SELECT current_setting('temp_directory')").fetchone()[0]).resolve()
+        limit = con.execute("SELECT current_setting('memory_limit')").fetchone()[0]
+    release = toolset.release.path.resolve()
+    assert release not in temp.parents and temp != release
+    assert temp == toolset.scratch_dir.resolve() and "MiB" in limit
+
+
+def test_missing_required_arguments_are_tool_errors(toolset):
+    for name in ("search_notes", "get_claim", "query_table", "get_chapter"):
+        with pytest.raises(ToolError, match="missing required"):
+            toolset.call(name, {})
+
+
+def test_lists_structs_and_bytes_come_back_as_json(toolset):
+    row = toolset.call("query_table", {"sql": "SELECT [1.5, 'NaN'::DOUBLE] AS l, {'a': 1, 'b': ROUND(2.345, 2)} AS s, "
+                                              "'x'::BLOB AS b, TIME '12:30:00' AS t"})["results"][0]["rows"][0]
+    assert row[0] == [1.5, None] and row[1] == {"a": 1, "b": 2.35}
+    assert row[2] == {"base64": "eA=="} and row[3] == "12:30:00"
+
+
+def test_hypothesis_ids_are_case_insensitive_everywhere(toolset):
+    assert toolset.call("search_analysis", {"query": "firms", "hypothesis": "h3"})["results"]
+    assert toolset.call("find_data", {"query": "firms", "hypothesis": "h3"})["results"][0]["hypothesis"] == "H3"
+
+
+def test_blank_lines_in_candidate_files_are_skipped(tmp_path):
+    from rag.ingest.index import read_jsonl
+    f = tmp_path / "x.jsonl"
+    f.write_text("\n".join(['{"id": 1}', "", "   ", '{"id": 2}', ""]))
+    assert read_jsonl(f) == [{"id": 1}, {"id": 2}]
+
+
+def test_bm25_is_built_once_per_filter_set(toolset):
+    index = toolset.indexes["notes"]
+    for _ in range(3):
+        toolset.call("search_notes", {"query": "board"})
+        toolset.call("search_notes", {"query": "board", "chapter": 9})
+    assert len(index._bm25) == 2
