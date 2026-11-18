@@ -53,6 +53,7 @@ class HybridIndex:
                  metas: list[dict], vectors: np.ndarray, model: str):
         self.name, self.ids, self.texts, self.metas, self.vectors, self.model = name, ids, texts, metas, vectors, model
         self.tokens = [tokenize(t) for t in embed_texts]
+        self._bm25: dict[tuple[int, ...], BM25Okapi] = {}   # per filtered document set; the index never changes
 
     @classmethod
     def load(cls, db: Path, name: str) -> "HybridIndex":
@@ -81,7 +82,10 @@ class HybridIndex:
         q = tokenize(query)
         bm25_rank: dict[int, int] = {}
         if q:
-            scores = BM25Okapi([self.tokens[i] for i in keep]).get_scores(q)
+            key = tuple(keep)
+            if key not in self._bm25:
+                self._bm25[key] = BM25Okapi([self.tokens[i] for i in keep])
+            scores = self._bm25[key].get_scores(q)
             matched = [j for j in np.argsort(-scores, kind="stable") if scores[j] > 0]
             bm25_rank = {keep[j]: r + 1 for r, j in enumerate(matched)}
 
