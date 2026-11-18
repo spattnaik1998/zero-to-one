@@ -6,9 +6,10 @@
     python -m rag ingest [notes|notebooks|registry|tables|index|all]
                                     build candidate files in build/candidates/
     python -m rag release [--check | --list | --pin ID] [--allow-dirty]
-    python -m rag ask "question" [--json] [--release ID] [--effort low|medium|high]
-                                    answer a question with the agent on the CURRENT release
                                     gate a candidate build and publish it as an immutable release
+    python -m rag ask "question" [--json] [--release ID] [--effort low|medium|high|xhigh|max]
+                                    answer a question with the agent on the CURRENT release;
+                                    exits 1 unless the answer completed (refusal, max_tokens, ...)
 """
 from __future__ import annotations
 
@@ -112,7 +113,7 @@ def ask(settings, args) -> int:
     a = session.ask(args.question)
     if args.json:
         print(_json.dumps(a.to_dict(), indent=2, ensure_ascii=False, default=str))
-        return 0
+        return 0 if a.ok else 1
     print(a.text or f"(no answer; stop reason {a.stop_reason})")
     if a.citations:
         print()
@@ -124,7 +125,7 @@ def ask(settings, args) -> int:
     print(f"{a.turns} model turn(s); tools: {calls}; release {a.release_id}; model {a.model}; "
           f"tokens in {a.usage['input_tokens']} (cache read {a.usage['cache_read_input_tokens']}), "
           f"out {a.usage['output_tokens']}" + ("; budget exhausted" if a.budget_exhausted else ""))
-    return 0 if a.stop_reason in ("end_turn", "stop_sequence") else 1
+    return 0 if a.ok else 1
 
 
 def release(settings, args) -> int:

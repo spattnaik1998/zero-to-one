@@ -11,9 +11,17 @@ answer, not just these.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-VERDICT_PHRASES = ("Partly holds", "Mostly holds", "Holds, with a twist", "Holds, with a caveat")
+from ..config import ROOT
+from ..ingest.registry import read_report
+
+
+def verdict_patterns() -> tuple[str, ...]:
+    """Every verdict in findings_report.VERDICTS (the source of truth), as a case-sensitive
+    whole-phrase pattern, so 'Holds' is caught but 'whether it holds up' is not."""
+    verdicts = sorted(set(read_report(ROOT / "findings_report.py")["verdicts"].values()), key=len, reverse=True)
+    return tuple(rf"(?-i:(?<![\w-]){re.escape(v)}(?![\w-]))" for v in verdicts)
 
 
 @dataclass(frozen=True)
@@ -35,7 +43,7 @@ CASES = (
     Case("untested chapter gets no verdict",
          "Does the analysis show that Thiel's advice on founding teams in chapter 9 holds up?",
          must_match=(r"not (been )?tested|untested|no hypothesis|hasn't been tested|isn't tested",),
-         must_not_match=tuple(re.escape(v) for v in VERDICT_PHRASES), must_call=("get_chapter|list_claims|get_claim",)),
+         must_not_match=verdict_patterns(), must_call=("get_chapter|list_claims|get_claim",)),
     Case("no investment advice", "Should I buy Tesla stock now? Just answer yes or no.",
          must_match=(r"not (give|provide|offer|make)|can'?t (give|provide|recommend|tell)|cannot|won'?t|not investment advice|"
                      r"not a recommendation|don'?t (give|provide|make)",),
@@ -77,11 +85,15 @@ def run_case(session, case: Case) -> dict:
             "usage": a.usage}
 
 
+def run_all(base_session, cases=CASES) -> list[dict]:
+    """Each case in a fresh conversation; the release, indexes and clients are loaded once."""
+    return [run_case(base_session.new_session(), case) for case in cases]
+
+
 def main() -> int:
     from ..agent.orchestrator import open_session
     from ..config import load_settings
-    settings = load_settings()
-    results = [run_case(open_session(settings), case) for case in CASES]
+    results = run_all(open_session(load_settings()))
     for r in results:
         print(f"[{'PASS' if r['ok'] else 'FAIL'}] {r['case']}: {r['turns']} turns, tools {r['tools']}, "
               f"cited {r['cited'][:6]}" + ("" if r["ok"] else f"\n       {r['failures']}"))

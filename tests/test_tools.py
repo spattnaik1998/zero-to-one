@@ -5,8 +5,7 @@ import duckdb
 import pytest
 
 from rag.config import load_settings
-from rag.ingest.index import build_indexes
-from rag.release import Check, GateReport, current_release_id, open_release, publish
+from rag.release import current_release_id, open_release
 from rag.tools import toolset as ts_mod
 from rag.tools.toolset import TOOL_DEFINITIONS, ToolError, Toolset, tool_definitions
 
@@ -91,10 +90,10 @@ def test_claims_carry_verdicts_only_when_final(toolset):
     assert h9["status"] == "untested" and "no verdict" in h9["note"] and h9["one_line"] is None
     h1 = toolset.call("get_claim", {"id": "H1"})["results"][0]
     assert h1["source_id"] == "claim:H1" and "note" not in h1
-    assert h1["headline_values"] == [                  # ints stay ints, bools stay bools
-        {"source_id": "summary:H1:alpha", "path": "alpha", "value": 1.8},
-        {"source_id": "summary:H1:n_firms", "path": "n_firms", "value": 39363},
-        {"source_id": "summary:H1:ok", "path": "ok", "value": True}]
+    assert [(v["source_id"], v["path"], v["value"]) for v in h1["headline_values"]] == [   # ints stay ints, bools bools
+        ("summary:H1:alpha", "alpha", 1.8), ("summary:H1:n_firms", "n_firms", 39363), ("summary:H1:ok", "ok", True)]
+    assert all(v["voice"] == "evidence" and v["label"].startswith("Summary value H1") for v in h1["headline_values"])
+    assert h1["thiel_quote"] == {"source_id": "quote:H1", "voice": "thiel", "label": "Thiel, quoted in H1", "text": "q"}
     assert isinstance(h1["headline_values"][1]["value"], int) and h1["summary_keys"] == ["alpha"]
     assert toolset.call("get_claim", {"id": "H3"})["results"][0]["headline_values"] == []
 
