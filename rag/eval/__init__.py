@@ -1,5 +1,8 @@
 """Evaluation and the CI release gate (spec section 10).
 
+Built: agent_smoke.py, 6 live questions each probing one answer rule (exact numbers, an untested
+chapter, no investment advice, prompt injection, voices kept apart); tests/test_agent.py runs it
+only with RAG_LIVE_TESTS=1, since it calls Claude.
 Built: retrieval_smoke.py, 25 questions with a known right document; reports hit@1/3/5
 for keyword, vector and hybrid search (tests/test_retrieval.py runs it where an OpenAI
 key and the built indexes exist).

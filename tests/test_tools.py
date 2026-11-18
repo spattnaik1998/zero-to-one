@@ -5,61 +5,9 @@ import duckdb
 import pytest
 
 from rag.config import load_settings
-from rag.ingest.index import build_indexes
-from rag.release import Check, GateReport, current_release_id, open_release, publish
+from rag.release import current_release_id, open_release
 from rag.tools import toolset as ts_mod
 from rag.tools.toolset import TOOL_DEFINITIONS, ToolError, Toolset, tool_definitions
-
-CLAIMS = [
-    {"id": "H1", "title": "The power law", "claim": "Power law", "chapters": [7], "status": "final",
-     "verdict": "Partly holds", "one_line": "A few winners.", "thiel_quote": "q", "sub_claims": [], "caveats": ["c"],
-     "notebook": "notebooks/01.ipynb", "summary": "output/h1_summary.json", "summary_keys": ["alpha"],
-     "tables": ["h3c_top20_2014"], "figures": ["h1_fig1_ccdf"], "note_ids": []},
-    {"id": "H3", "title": "Durability", "claim": "Durability", "chapters": [5], "status": "final",
-     "verdict": "Holds, with a twist", "one_line": "Leaders last.", "thiel_quote": "", "sub_claims": [],
-     "caveats": [], "notebook": "notebooks/03.ipynb", "summary": None, "summary_keys": [], "tables": [],
-     "figures": [], "note_ids": []},
-    {"id": "H9", "title": "Founders and organisation", "claim": "Founders", "chapters": [9, 10], "status": "untested",
-     "verdict": None, "one_line": None, "thiel_quote": "", "sub_claims": [], "caveats": [], "notebook": None,
-     "summary": None, "summary_keys": [], "tables": [], "figures": [], "note_ids": ["note-09-01"]},
-]
-
-
-def _chapter_map():
-    out = []
-    for n in range(16):
-        hyps = [c["id"] for c in CLAIMS if n in c["chapters"] and c["status"] == "final"]
-        placeholders = [c["id"] for c in CLAIMS if n in c["chapters"] and c["status"] == "untested"]
-        notes = {3: ["note-03-01"], 9: ["note-09-01"], 12: ["note-12-01"]}.get(n, [])
-        out.append({"number": n, "title": f"Chapter {n}", "hypotheses": hyps, "untested": placeholders,
-                    "tested": bool(hyps), "note_ids": notes})
-    return out
-
-
-@pytest.fixture
-def toolset(candidates, hash_embedder, tmp_path):
-    (candidates / "claims_registry.json").write_text(json.dumps(CLAIMS))
-    (candidates / "chapter_map.json").write_text(json.dumps(_chapter_map()))
-    (candidates / "notes_corrections.jsonl").write_text("")
-    con = duckdb.connect(str(candidates / "analysis.duckdb"))
-    con.execute("CREATE TABLE h3c_top20_2014 AS SELECT * FROM (VALUES ('Apple', 1, 3, true), ('Exxon', 2, 16, true), "
-                "('GE', 3, 90, false), ('Odd', 4, NULL, false)) t(firm, rank_2014, rank_2025, still_top20)")
-    con.execute("CREATE TABLE summary_values AS SELECT * FROM (VALUES "
-                "('H1', 'alpha', 'alpha', 'float', 1.8, '1.8', 'h1_summary.json'), "
-                "('H1', 'n_firms', 'n_firms', 'int', 39363.0, '39363', 'h1_summary.json'), "
-                "('H1', 'ok', 'ok', 'bool', 1.0, 'true', 'h1_summary.json'), "
-                "('H1', 'years[0]', 'years', 'int', 2011.0, '2011', 'h1_summary.json'), "
-                "('H1', 'top5[0].firm', 'top5', 'str', NULL, 'NVIDIA', 'h1_summary.json')) "
-                "t(hypothesis, path, top_key, value_type, value_num, value_text, source)")
-    con.close()
-    build_indexes(candidates, candidates / "indexes.duckdb", hash_embedder)
-    (tmp_path / "output" / "figures").mkdir(parents=True)
-    (tmp_path / "output" / "figures" / "h1_fig1_ccdf.png").write_bytes(b"png")
-    settings = load_settings(environ={"RAG_BUILD_DIR": str(candidates.parent), "OPENAI_EMBEDDING_MODEL": "hash-test"},
-                             dotenv={})
-    publish(settings, GateReport([Check("all", True, "ok")]), root=tmp_path)
-    return Toolset(open_release(settings), hash_embedder)
-
 
 # ---------------------------------------------------------------- definitions
 def test_definitions_fit_strict_tool_use():
@@ -142,10 +90,10 @@ def test_claims_carry_verdicts_only_when_final(toolset):
     assert h9["status"] == "untested" and "no verdict" in h9["note"] and h9["one_line"] is None
     h1 = toolset.call("get_claim", {"id": "H1"})["results"][0]
     assert h1["source_id"] == "claim:H1" and "note" not in h1
-    assert h1["headline_values"] == [                  # ints stay ints, bools stay bools
-        {"source_id": "summary:H1:alpha", "path": "alpha", "value": 1.8},
-        {"source_id": "summary:H1:n_firms", "path": "n_firms", "value": 39363},
-        {"source_id": "summary:H1:ok", "path": "ok", "value": True}]
+    assert [(v["source_id"], v["path"], v["value"]) for v in h1["headline_values"]] == [   # ints stay ints, bools bools
+        ("summary:H1:alpha", "alpha", 1.8), ("summary:H1:n_firms", "n_firms", 39363), ("summary:H1:ok", "ok", True)]
+    assert all(v["voice"] == "evidence" and v["label"].startswith("Summary value H1") for v in h1["headline_values"])
+    assert h1["thiel_quote"] == {"source_id": "quote:H1", "voice": "thiel", "label": "Thiel, quoted in H1", "text": "q"}
     assert isinstance(h1["headline_values"][1]["value"], int) and h1["summary_keys"] == ["alpha"]
     assert toolset.call("get_claim", {"id": "H3"})["results"][0]["headline_values"] == []
 
