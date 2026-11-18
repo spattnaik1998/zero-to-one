@@ -4,12 +4,14 @@ Built: retrieval_smoke.py, 25 questions with a known right document; reports hit
 for keyword, vector and hybrid search (tests/test_retrieval.py runs it where an OpenAI
 key and the built indexes exist).
 
-Golden set (~180): verdict 40, numeric lookup 40, book quote/definition 25, method 20,
-chapter overview 15, notes vs. book 15, cross-chapter 15, out of scope/adversarial 10,
+Golden set (~140, planned): verdict 40, numeric lookup 40, method 20, chapter overview 15
+(incl. untested chapters 0, 8, 9, 10, 14), cross-chapter 15, out of scope/adversarial 10,
 plus an authorization category (tool ACL negatives).
 
-Gate thresholds: numbers matching tool outputs >= 98%, verdicts = registry 100%,
-voice labels 100%, alignment labels >= 90%, alignment numerics 100%,
-untested/provisional claims never get a verdict. Any failure blocks publication.
+Answer thresholds (planned): numbers matching tool outputs >= 98% (allowing for the
+summaries' rounding), verdicts = registry 100%, voice labels 100%, untested/provisional
+claims never get a verdict. Any failure will block publication.
+Today the release gate (rag/release.py) runs retrieval_smoke and requires every
+question's answer in the top 5.
 Open (set from the first baseline): citation precision, out-of-scope refusal rate.
 """

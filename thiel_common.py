@@ -603,6 +603,17 @@ def save_table(df, name, **kw):
     df.to_csv(TAB / f"{name}.csv", **kw)
 
 
+def save_summary(summary: dict, name: str):
+    """Write output/<name>_summary.json with a `_provenance` stamp recording whether the run
+    used synthetic data. The RAG release gate refuses to publish a synthetic summary."""
+    from datetime import datetime, timezone
+    stamped = {**summary, "_provenance": {
+        "synthetic": SYNTHETIC,
+        "written_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }}
+    (OUT / f"{name}_summary.json").write_text(json.dumps(stamped, indent=1, default=str))
+
+
 # ------------------------------------------------------------------ synthetic (testing only)
 _SYN = {}
 

@@ -84,7 +84,9 @@ def summary_rows(output: Path) -> list[dict]:
     rows = []
     for f in sorted(output.glob("h*_summary.json")):
         hyp = "H" + re.match(r"h(\d+)_", f.name).group(1)
-        for path, v in flatten(json.loads(f.read_text(encoding="utf-8"))):
+        data = json.loads(f.read_text(encoding="utf-8"))
+        # top-level keys starting with '_' are metadata (e.g. _provenance), not results
+        for path, v in flatten({k: v for k, v in data.items() if not k.startswith("_")}):
             is_num = isinstance(v, (int, float)) and not isinstance(v, bool)
             rows.append({
                 "hypothesis": hyp, "path": path, "top_key": re.split(r"[.\[]", path, 1)[0],

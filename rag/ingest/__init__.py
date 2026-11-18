@@ -24,6 +24,6 @@ Built (`python -m rag ingest` writes build/candidates/):
 Planned:
   panels.py     phase 3: cleaned thiel_common panels as read-only views
 
-Rules: candidates are for development until the release gate passes; publishing must
-refuse any `output/` produced in synthetic mode (THIEL_SYNTHETIC=1).
+Rules: candidates are for development; only `python -m rag release` (rag/release.py) turns a
+passing build into a release, and it refuses any `output/` produced in synthetic mode.
 """

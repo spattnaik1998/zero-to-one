@@ -32,9 +32,11 @@ For `rag/`:
 pip install -r requirements-rag.txt
 pytest -q                       # tests in tests/; CI runs these on every PR
 python -m rag doctor            # keys, models, sources, analysis outputs; --offline downgrades missing keys to warnings
-python -m rag manifest          # build/manifest.json: source hashes, git commit, models, licence status
+python -m rag manifest          # build/manifest.json: source hashes, git commit, models
 python -m rag ingest [notes|notebooks|registry|tables|index|all]   # build/candidates/; all runs every step; stops if the registry sources disagree or the DuckDB copy differs from output/
                                 # `index` calls OpenAI (embeddings are cached in build/cache/, so rebuilds of unchanged text are free)
+python -m rag release          # gate the candidates, then publish build/releases/<id>/ and point CURRENT at it
+                                # --check (gate only), --list, --pin <id> (rollback), --allow-dirty (uncommitted inputs, local trials)
 ```
 
 Parser tests run on a synthetic notes PDF built in `tests/conftest.py` with the same typography as the real notes, and on synthetic notebooks and repos built inside the tests. `tests/test_real_sources.py` checks the real notes, and `tests/test_registry.py::test_the_real_repository_is_consistent` checks the real notebooks, README and `findings_report.py`; both run in CI because those files are committed.
@@ -61,11 +63,13 @@ When printing notebook contents from a shell, set `PYTHONIOENCODING=utf8`: the n
 
 **`rag/`** reads settings through `rag/config.py` from the same nearest `.env` as `thiel_common`. Keep every key (SEC, Census, FRED, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) in that one file: a closer second `.env` would hide the notebooks' keys. Template: `.env.example`. Claude handles reasoning (`CLAUDE_MODEL`, default `claude-opus-5-5`; `CLAUDE_PROVIDER` selects the platform). OpenAI handles embeddings only, with the model pinned in `OPENAI_EMBEDDING_MODEL`. Changing that model means re-embedding every index.
 
+**Releases.** Nothing serves from `build/candidates/`. `rag/release.py` gates a build: summaries must be live, not synthetic (each carries a `_provenance` stamp from `tc.save_summary`, or, for summaries that predate the stamp, matches the hash in `output/provenance.json`, and no output may contain the synthetic generators' `FIRM <n>` names); release inputs must be committed; the candidates must match a fresh build from today's sources; the DuckDB copy must match `output/`; the indexes must match the candidates and the pinned embedding model; every retrieval smoke question must be answered in the top 5. A release is immutable (read-only files, content-derived ID, re-hashed on open). Notebooks must write their summary with `tc.save_summary(summary, "hN")`, never by hand, or the gate cannot tell a live run from a synthetic one.
+
 **The book is out of the corpus and out of the code** (scope decision): the assistant works from the notes and the analysis, and Thiel's words appear only as the notebooks' claim-cell quotations. **`sources/book/`** stays git-ignored so that a local copy of the book is never committed: the GitHub repo is public and the book is copyrighted. **`sources/notes/`** holds the analyst's reading notes, which the analyst chose to publish.
 
 ## Conventions
 
-- New notebooks go in `notebooks/` and follow the existing shape: a markdown cell quoting the claim and chapter, setup (the two `sys.path` lines that find the repo root, then `import thiel_common as tc; tc.style()`), analysis cells, and a final "Verdict inputs and check cell" that writes the summary JSON.
+- New notebooks go in `notebooks/` and follow the existing shape: a markdown cell quoting the claim and chapter, setup (the two `sys.path` lines that find the repo root, then `import thiel_common as tc; tc.style()`), analysis cells, and a final "Verdict inputs and check cell" that writes the summary with `tc.save_summary(summary, "hN")`.
 - Figure and table names are prefixed `hN_` (`h2_fig3_airlines_bigtech`, `h2a_cross_section_slopes`).
 - Verdicts appear in three places that must agree: `VERDICTS` in `findings_report.py`, the "Findings" table in `README.md`, and the scorecard claim text in `build()`. Chapters must also agree between each notebook's heading, the README row and the scorecard. `rag/ingest/registry.py` checks both, and `tests/test_registry.py::test_the_real_repository_is_consistent` fails CI on any mismatch. `README.md` also has the notebook/data table. Update all of them when a verdict changes or a notebook is added.
 - Identify figures by file name (`h1_fig1_ccdf`), never by figure number: the report and the notebooks number figures differently (the report's "Figure H1-1" is `h1_fig3_wealth_creation`, the notebook's is `h1_fig1_ccdf`).

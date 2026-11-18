@@ -1,5 +1,4 @@
 import json
-import zlib
 from types import SimpleNamespace
 
 import numpy as np
@@ -9,53 +8,6 @@ from rag.config import ROOT, load_settings
 from rag.ingest.embed import EmbeddingCache, OpenAIEmbedder, normalise
 from rag.ingest.index import _context, all_docs, build_indexes, content_hash
 from rag.retrieval import HybridIndex, tokenize
-
-
-class HashEmbedder:
-    """Deterministic stand-in for OpenAI: hashed bag of words, so shared words mean similarity.
-    Uses CRC32, not hash(), which Python randomises per process."""
-    model, dims = "hash-test", 64
-
-    def embed(self, texts):
-        out = np.zeros((len(texts), self.dims), np.float32)
-        for i, t in enumerate(texts):
-            for tok in tokenize(t) or ["empty"]:
-                out[i, zlib.crc32(tok.encode()) % self.dims] += 1.0
-        return normalise(out)
-
-
-@pytest.fixture
-def candidates(tmp_path):
-    c = tmp_path / "candidates"
-    c.mkdir()
-    notes = [
-        {"id": "note-03-01", "chapter": 3, "chapter_title": "3 All Happy Companies Are Different", "page": 1,
-         "opinion": False, "voice": "analyst", "text": "Airlines made 37 cents per passenger; Google's margin was 21%."},
-        {"id": "note-09-01", "chapter": 9, "chapter_title": "9 Foundations", "page": 2,
-         "opinion": False, "voice": "analyst", "text": "A board of three is ideal. CEO pay under $150,000."},
-        {"id": "note-12-01", "chapter": 12, "chapter_title": "12 Man and Machine", "page": 2,
-         "opinion": True, "voice": "analyst", "text": "My view: computers complement people."},
-    ]
-    (c / "notes_chunks.jsonl").write_text("\n".join(json.dumps(n) for n in notes), encoding="utf-8")
-    chunks = [
-        {"id": "nb-h3-001", "hypothesis": "H3", "sub_claim": "H3c", "kind": "method", "voice": "evidence",
-         "section": "H3c · Are the giants durable?", "cell": 8, "cell_type": "markdown", "chapters": [5],
-         "notebook": "notebooks/03.ipynb", "text": "The largest firms by public float, five-year survival."},
-        {"id": "nb-h3-002", "hypothesis": "H3", "sub_claim": None, "kind": "caveat", "voice": "evidence",
-         "section": None, "cell": 0, "cell_type": "markdown", "chapters": [5], "notebook": "notebooks/03.ipynb",
-         "text": "Firms that stop filing may have been acquired or failed."},
-    ]
-    (c / "notebook_chunks.jsonl").write_text("\n".join(json.dumps(x) for x in chunks), encoding="utf-8")
-    (c / "schema_cards.json").write_text(json.dumps([{
-        "name": "h3c_top20_2014", "hypothesis": "H3", "sub_claim": "H3c", "section": "H3c · Are the giants durable?",
-        "rows": 20, "columns": [{"name": "firm", "type": "str", "min": None, "max": None, "examples": ["Apple Inc."]},
-                                {"name": "rank_2025", "type": "float64", "min": 2.0, "max": 221.0, "examples": []}]}]))
-    (c / "figures.json").write_text(json.dumps([{"name": "h1_fig1_ccdf", "hypothesis": "H1",
-        "caption": "The tail in the year of the book", "caption_source": "notebook heading",
-        "png": "output/figures/h1_fig1_ccdf.png"}]))
-    (c / "claims_registry.json").write_text(json.dumps([{"id": "H1", "title": "The power law"},
-                                                        {"id": "H3", "title": "Durability"}]))
-    return c
 
 
 def test_tokenize_keeps_money_percent_and_years():
@@ -78,9 +30,9 @@ def test_documents_carry_context_and_metadata(candidates):
     assert docs["nb-h3-002"].meta["kind"] == "caveat" and docs["note-09-01"].meta["chapter"] == 9
 
 
-def test_build_and_search(candidates, tmp_path):
+def test_build_and_search(candidates, hash_embedder, tmp_path):
     db = tmp_path / "indexes.duckdb"
-    emb = HashEmbedder()
+    emb = hash_embedder
     report = build_indexes(candidates, db, emb)
     assert report["counts"] == {"notes": 3, "analysis": 2, "catalog": 2} and report["dims"] == 64
     assert report["content_hash"] == content_hash(all_docs(candidates))
