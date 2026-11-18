@@ -8,8 +8,11 @@ import pytest
 from rag.config import ROOT, load_settings
 from rag.ingest.index import build_indexes
 from rag.release import (ARTIFACTS, Check, GateReport, check_git_clean, check_index, check_provenance,
-                         current_release_id, list_releases, open_release, publish, set_current)
-from rag.sources import sha256
+                         current_release_id, list_releases, open_release, publish, set_current, text_sha256)
+
+
+NEWLINE, CRLF = bytes([10]), bytes([13, 10])
+LF_JSON = b'{' + NEWLINE + b' "a": 1' + NEWLINE + b'}' + NEWLINE
 
 
 def _settings(tmp_path, **env):
@@ -42,10 +45,19 @@ def test_unstamped_summary_needs_a_matching_attestation(tmp_path):
     _output(tmp_path, {"h1_summary.json": {"a": 1}}, attest={})
     assert "no provenance stamp" in check_provenance(tmp_path).detail
     f = tmp_path / "output" / "h1_summary.json"
-    (tmp_path / "output" / "provenance.json").write_text(json.dumps({"summaries": {"h1_summary.json": {"sha256": sha256(f)}}}))
+    (tmp_path / "output" / "provenance.json").write_text(json.dumps({"summaries": {"h1_summary.json": {"sha256": text_sha256(f)}}}))
     assert check_provenance(tmp_path).ok
     f.write_text(json.dumps({"a": 2}))                    # rewritten after attestation, e.g. by a synthetic run
     assert not check_provenance(tmp_path).ok
+
+
+def test_attestation_hash_ignores_line_endings(tmp_path):
+    lf, crlf = tmp_path / "lf.json", tmp_path / "crlf.json"
+    lf.write_bytes(LF_JSON)
+    crlf.write_bytes(LF_JSON.replace(NEWLINE, CRLF))
+    assert text_sha256(lf) == text_sha256(crlf)             # a Windows and a Linux checkout agree
+    crlf.write_bytes(LF_JSON.replace(b"1", b"2").replace(NEWLINE, CRLF))
+    assert text_sha256(lf) != text_sha256(crlf)             # content changes still count
 
 
 def test_synthetic_firm_names_are_refused(tmp_path):

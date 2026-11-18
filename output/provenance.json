@@ -8,7 +8,7 @@
   ],
   "summaries": {
     "h1_summary.json": {
-      "sha256": "89dddfd9c2a379d26e0f75621c0d3019f58fbc90763cf231a45f6424d986164f",
+      "sha256": "d1aa74eb0ed26a5779e2083c5aa42c852795be21f0b47f0952b413895ca2b4dc",
       "synthetic": false
     },
     "h2_summary.json": {
@@ -16,7 +16,7 @@
       "synthetic": false
     },
     "h3_summary.json": {
-      "sha256": "e7a8d52243a5d68750419d8da428cb6b5a67ec6444d068134791854e2cbb3540",
+      "sha256": "c530a5c54c2db1382df4c1dac7e5098b0ccc4ef60aad41b923d29aa7018bf9c8",
       "synthetic": false
     },
     "h4_summary.json": {
@@ -24,20 +24,21 @@
       "synthetic": false
     },
     "h5_summary.json": {
-      "sha256": "bdd51ed5e77e3247c7b1a15c958fa50ff4e031239c09c5eba173fa918e8f85a1",
+      "sha256": "85048685c929adfddc06b4350087a68928938d24b13c4e8bb3f2fae320088730",
       "synthetic": false
     },
     "h6_summary.json": {
-      "sha256": "7037642a1c8ee0c92986d656e72e0970ef8af5269c4667fae3e5b2e057bdd053",
+      "sha256": "ceacb1431a80f6e3b3e3bbb87632f25e31ef172bf44d5d270de8087174021100",
       "synthetic": false
     },
     "h7_summary.json": {
-      "sha256": "2e124e1f648787a2bd4ca7f4a3e95555fee94f3f0bd729535b04896f20bf2ae2",
+      "sha256": "a8c0296f61c6c5e7fb4282ddbd065b255199f6107c4a77d56be6ab64f00adfb7",
       "synthetic": false
     },
     "h8_summary.json": {
       "sha256": "d1ce642b376aaa3f2aa94161d563505458cbd17f5eeb9c4311011cfdf93de466",
       "synthetic": false
     }
-  }
+  },
+  "hashing": "SHA-256 of the file with CRLF normalised to LF (rag.release.text_sha256), so it is the same on every OS"
 }

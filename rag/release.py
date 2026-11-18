@@ -34,6 +34,12 @@ ATTESTATION = Path("output") / "provenance.json"
 SYNTHETIC_NAME = re.compile(r"\bFIRM \d+\b")          # how thiel_common's synthetic generators name firms
 
 
+def text_sha256(path: Path) -> str:
+    """SHA-256 of a text file with CRLF normalised to LF. Git can check the same committed file
+    out with CRLF on Windows (core.autocrlf) and LF on Linux; the hash must not depend on that."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 @dataclass
 class Check:
     name: str
@@ -67,7 +73,7 @@ def check_provenance(root: Path) -> Check:
         if prov is not None:
             if prov.get("synthetic") is not False:
                 bad.append(f"{f.name} was written by a synthetic run")
-        elif attested.get(f.name, {}).get("sha256") != sha256(f):
+        elif attested.get(f.name, {}).get("sha256") != text_sha256(f):
             bad.append(f"{f.name} has no provenance stamp and does not match {ATTESTATION.as_posix()}")
     for f in sorted((root / "output").glob("h*_summary.json")) + sorted((root / "output" / "tables").glob("*.csv")):
         if SYNTHETIC_NAME.search(f.read_text(encoding="utf-8", errors="ignore")):
