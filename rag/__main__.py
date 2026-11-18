@@ -6,6 +6,8 @@
     python -m rag ingest [notes|notebooks|registry|tables|index|all]
                                     build candidate files in build/candidates/
     python -m rag release [--check | --list | --pin ID] [--allow-dirty]
+    python -m rag ask "question" [--json] [--release ID] [--effort low|medium|high]
+                                    answer a question with the agent on the CURRENT release
                                     gate a candidate build and publish it as an immutable release
 """
 from __future__ import annotations
@@ -83,17 +85,46 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--list", action="store_true", help="list published releases")
     g.add_argument("--pin", metavar="RELEASE_ID", help="point CURRENT at an existing release (rollback)")
     r.add_argument("--allow-dirty", action="store_true", help="allow uncommitted release inputs (local trials)")
+    a = sub.add_parser("ask", help="answer a question with the agent")
+    a.add_argument("question")
+    a.add_argument("--json", action="store_true", help="print the full answer record as JSON")
+    a.add_argument("--release", metavar="RELEASE_ID", help="a release other than CURRENT")
+    a.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default="medium")
     args = p.parse_args(argv)
 
     if args.cmd == "doctor":
         return doctor(args.offline)
     settings = load_settings()
+    if args.cmd == "ask":
+        return ask(settings, args)
     if args.cmd == "release":
         return release(settings, args)
     if args.cmd == "manifest":
         print(f"wrote {sources.write_manifest(settings)}")
         return 0
     return ingest(settings, args.what)
+
+
+def ask(settings, args) -> int:
+    import json as _json
+    from .agent.orchestrator import open_session
+    session = open_session(settings, args.release, effort=args.effort)
+    a = session.ask(args.question)
+    if args.json:
+        print(_json.dumps(a.to_dict(), indent=2, ensure_ascii=False, default=str))
+        return 0
+    print(a.text or f"(no answer; stop reason {a.stop_reason})")
+    if a.citations:
+        print()
+        print("Sources:")
+        for c in dict.fromkeys((c.source_id, c.title) for c in a.citations):
+            print(f"  [{c[0]}] {c[1] or ''}")
+    calls = ", ".join(f"{t.name}{'' if t.ok else ' (error)'}" for t in a.tool_calls) or "none"
+    print()
+    print(f"{a.turns} model turn(s); tools: {calls}; release {a.release_id}; model {a.model}; "
+          f"tokens in {a.usage['input_tokens']} (cache read {a.usage['cache_read_input_tokens']}), "
+          f"out {a.usage['output_tokens']}" + ("; budget exhausted" if a.budget_exhausted else ""))
+    return 0 if a.stop_reason in ("end_turn", "stop_sequence") else 1
 
 
 def release(settings, args) -> int:
