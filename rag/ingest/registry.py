@@ -156,7 +156,9 @@ def build_registry(root: Path, notes: list | None = None) -> tuple[list[Claim], 
         prefix = re.compile(rf"^h{n}[a-z]?_")
         tables = tuple(sorted(p.stem for p in (root / "output" / "tables").glob("*.csv") if prefix.match(p.stem)))
         figures = tuple(sorted(p.stem for p in (root / "output" / "figures").glob("*.png") if prefix.match(p.stem)))
-        keys = tuple(json.loads(summary.read_text(encoding="utf-8"))) if summary.is_file() else ()
+        # top-level keys starting with "_" are metadata (e.g. _provenance), not evidence
+        keys = tuple(k for k in json.loads(summary.read_text(encoding="utf-8")) if not k.startswith("_")) \
+            if summary.is_file() else ()
         claims.append(Claim(
             id=cid,
             title=cell.title if cell else _strip_chapters(score or cid),

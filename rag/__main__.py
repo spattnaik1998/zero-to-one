@@ -5,6 +5,8 @@
     python -m rag manifest          write build/manifest.json for the current sources
     python -m rag ingest [notes|notebooks|registry|tables|index|all]
                                     build candidate files in build/candidates/
+    python -m rag release [--check | --list | --pin ID] [--allow-dirty]
+                                    gate a candidate build and publish it as an immutable release
 """
 from __future__ import annotations
 
@@ -75,15 +77,50 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("manifest", help="write build/manifest.json")
     i = sub.add_parser("ingest", help="build candidate files in build/candidates/")
     i.add_argument("what", nargs="?", choices=["notes", "notebooks", "registry", "tables", "index", "all"], default="all")
+    r = sub.add_parser("release", help="run the release gate and publish an immutable corpus version")
+    g = r.add_mutually_exclusive_group()
+    g.add_argument("--check", action="store_true", help="run the gate only; publish nothing")
+    g.add_argument("--list", action="store_true", help="list published releases")
+    g.add_argument("--pin", metavar="RELEASE_ID", help="point CURRENT at an existing release (rollback)")
+    r.add_argument("--allow-dirty", action="store_true", help="allow uncommitted release inputs (local trials)")
     args = p.parse_args(argv)
 
     if args.cmd == "doctor":
         return doctor(args.offline)
     settings = load_settings()
+    if args.cmd == "release":
+        return release(settings, args)
     if args.cmd == "manifest":
         print(f"wrote {sources.write_manifest(settings)}")
         return 0
     return ingest(settings, args.what)
+
+
+def release(settings, args) -> int:
+    from .release import list_releases, publish, run_gate, set_current
+    if args.list:
+        rows = list_releases(settings)
+        for r in rows:
+            print(f"{'*' if r['current'] else ' '} {r['release_id']}  {r['created_utc']}  git {str(r['git']['commit'])[:7]}"
+                  + ("  (dirty)" if r["git"]["dirty"] else ""))
+        print(f"{len(rows)} release(s); * = CURRENT" if rows else "no releases yet")
+        return 0
+    if args.pin:
+        set_current(settings, args.pin)
+        print(f"CURRENT -> {args.pin}")
+        return 0
+    report = run_gate(settings, allow_dirty=args.allow_dirty)
+    for c in report.checks:
+        print(f"[{'PASS' if c.ok else 'FAIL'}] {c.name:<11} {c.detail}")
+    if not report.passed:
+        print("gate FAILED: nothing published")
+        return 1
+    if args.check:
+        print("gate passed (check only; nothing published)")
+        return 0
+    r = publish(settings, report)
+    print(f"{'published' if r['new'] else 'already published'} {r['release_id']} -> {r['path']}; CURRENT updated")
+    return 0
 
 
 def ingest(settings, what: str) -> int:

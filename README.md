@@ -75,6 +75,7 @@ pip install -r requirements-rag.txt
 cp .env.example .env      # or add the new keys to your existing .env (see the note inside)
 python -m rag doctor      # checks keys, models, sources and analysis outputs
 python -m rag ingest      # notes, notebook chunks, claims registry, chapter map, DuckDB results database, search indexes
+python -m rag release    # check the build and publish it as an immutable, versioned release
 pytest -q
 ```
 

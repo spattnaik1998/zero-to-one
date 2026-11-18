@@ -1,0 +1,44 @@
+{
+  "purpose": "Attests that these summaries came from live runs. They predate the _provenance stamp that tc.save_summary now adds. The RAG release gate accepts an unstamped summary only if its SHA-256 matches this file, so any later rewrite (e.g. a THIEL_SYNTHETIC=1 run) is refused until the notebook is re-run live, which stamps it.",
+  "attested_utc": "2026-11-17",
+  "evidence": [
+    "unchanged since commit a80f205, the first commit of output/",
+    "no synthetic firm names (thiel_common's generators use 'FIRM <n>') in any summary or table",
+    "real company names throughout (e.g. Apple Inc., MICROSOFT CORPORATION, NVIDIA CORP)"
+  ],
+  "summaries": {
+    "h1_summary.json": {
+      "sha256": "d1aa74eb0ed26a5779e2083c5aa42c852795be21f0b47f0952b413895ca2b4dc",
+      "synthetic": false
+    },
+    "h2_summary.json": {
+      "sha256": "76477b734bf05aba48ab3852d38b5734e59d04bbdfcfb448541b032219328f2a",
+      "synthetic": false
+    },
+    "h3_summary.json": {
+      "sha256": "c530a5c54c2db1382df4c1dac7e5098b0ccc4ef60aad41b923d29aa7018bf9c8",
+      "synthetic": false
+    },
+    "h4_summary.json": {
+      "sha256": "cede57eb75292601c816c9ddc672b5c7b03f0738398556562a6bc1802e8d745f",
+      "synthetic": false
+    },
+    "h5_summary.json": {
+      "sha256": "85048685c929adfddc06b4350087a68928938d24b13c4e8bb3f2fae320088730",
+      "synthetic": false
+    },
+    "h6_summary.json": {
+      "sha256": "ceacb1431a80f6e3b3e3bbb87632f25e31ef172bf44d5d270de8087174021100",
+      "synthetic": false
+    },
+    "h7_summary.json": {
+      "sha256": "a8c0296f61c6c5e7fb4282ddbd065b255199f6107c4a77d56be6ab64f00adfb7",
+      "synthetic": false
+    },
+    "h8_summary.json": {
+      "sha256": "d1ce642b376aaa3f2aa94161d563505458cbd17f5eeb9c4311011cfdf93de466",
+      "synthetic": false
+    }
+  },
+  "hashing": "SHA-256 of the file with CRLF normalised to LF (rag.release.text_sha256), so it is the same on every OS"
+}
