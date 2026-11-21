@@ -156,7 +156,10 @@ def test_new_content_is_a_new_release_and_pin_rolls_back(built, tmp_path):
     assert current_release_id(settings) == first
     assert [r["release_id"] for r in list_releases(settings) if r["current"]] == [first]
     with pytest.raises(FileNotFoundError):
-        set_current(settings, "r00000000-nope")
+        set_current(settings, "r00000000-0000000000")            # well formed, not published
+    for not_an_id in ("../candidates", "r00000000-nope", "..", "r20261118-609abb4152/../../x"):
+        with pytest.raises(ValueError, match="not a release id"):
+            set_current(settings, not_an_id)                     # never a path to an ungated build
 
 
 def test_no_release_yet(tmp_path):

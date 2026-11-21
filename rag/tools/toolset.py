@@ -31,6 +31,7 @@ import duckdb
 from ..ingest.index import read_jsonl
 from ..release import Release
 from ..retrieval import HybridIndex
+from ..units import column_unit
 
 MAX_K = 10
 DEFAULT_K = 5
@@ -297,8 +298,11 @@ class Toolset:
         name = _str(name, "name")
         if name not in self.cards:
             raise ToolError(f"no table {name!r}; use find_data to look tables up")
+        card = dict(self.cards[name])
+        # each column's unit, from its name's suffix (_bn, _tn, _m, _k, _pct): the only record of its scale
+        card["columns"] = [{**c, "unit": (column_unit(c["name"]) or {}).get("unit")} for c in card["columns"]]
         return {"results": [{"source_id": f"table:{name}", "voice": "evidence", "label": f"Table {name} (schema)",
-                             **self.cards[name]}]}
+                             **card}]}
 
     def tool_get_figure(self, name) -> dict:
         name = _str(name, "name")
@@ -337,6 +341,8 @@ class Toolset:
             "voice": "evidence", "label": f"Query result: {sql[:120]}", "sql": sql, "columns": columns,
             "rows": [[_json_value(v) for v in r] for r in rows[:cap]],
             "row_count": min(len(rows), cap), "truncated": len(rows) > cap,
+            # units of the columns whose names carry one (gain_bn: billions); a renamed column has none
+            "units": {c: u["unit"] for c in columns if (u := column_unit(c))},
         }]}
 
 

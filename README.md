@@ -76,6 +76,8 @@ cp .env.example .env      # or add the new keys to your existing .env (see the n
 python -m rag doctor      # checks keys, models, sources and analysis outputs
 python -m rag ingest      # notes, notebook chunks, claims registry, chapter map, DuckDB results database, search indexes
 python -m rag release    # check the build and publish it as an immutable, versioned release
+python -m rag eval --release <id> --baseline   # 140-question golden set; must pass before the release is served
+python -m rag release --promote <id>
 python -m rag ask "How many of the 2014 top-20 firms were still top 20 in 2025?"
 python -m rag audit      # verify the audit log of every answer
 pytest -q

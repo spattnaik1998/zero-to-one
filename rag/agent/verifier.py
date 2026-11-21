@@ -27,10 +27,13 @@ verifies again; an answer that still fails is returned flagged with its violatio
 """
 from __future__ import annotations
 
+import itertools
 import json
 import logging
 import re
 from dataclasses import asdict, dataclass, field
+
+from ..units import column_unit
 
 log = logging.getLogger(__name__)
 
@@ -119,6 +122,8 @@ def _checked_numbers(text: str):
             and "$" not in m.group(0)
         if plain_int and 1900 <= n.value <= 2100:
             continue                                            # a year
+        if plain_int and len(n.literal) == 2 and re.search(r"(?:19|20)\d\d\s?[–-]$", text[max(0, start - 6):start]):
+            continue                                            # the end of a year range: 2011–14, 1948-73
         if plain_int and n.value == 16 and re.match(r"\s+September\b", text[m.end():]):
             continue                                            # the publication date
         if re.search(r"\b(?:chapters?|ch\.)\s*(?:\d{1,2}\s*(?:,|and|&|–|-|to)\s*)*$", text[max(0, start - 40):start],
@@ -132,29 +137,53 @@ def _checked_numbers(text: str):
 
 @dataclass
 class Evidence:
-    numbers: set[float]
+    numbers: set[float]                # every number as the tools returned it
     sources: dict[str, str]            # source_id -> voice
     text: str                          # every string in the tool results, for verdict provenance
+    # numbers whose unit is unknown: a unit word in the answer may put them at any scale
+    free: set[float] | None = None
+    # numbers whose column or key names their scale (gain_bn), as absolute amounts
+    absolute: set[float] = field(default_factory=set)
+
+    def __post_init__(self):
+        if self.free is None:
+            self.free = set(self.numbers)
 
     @classmethod
     def from_calls(cls, calls, question: str = "") -> "Evidence":
-        numbers, sources, texts = set(), {}, []
+        ev = cls(set(), {}, "", free=set())
+        texts = []
         for c in calls:
             if not (c.ok and c.result):
                 continue
             literal_only = c.name == "query_table" and not re.search(r"\bfrom\b", str(c.input.get("sql", "")), re.I)
-            _walk(c.result, numbers, sources, texts, collect_numbers=not literal_only)
-        numbers |= _numbers_in(question)
-        return cls(numbers, sources, "\n".join(texts))
+            _walk(c.result, ev, texts, collect_numbers=not literal_only)
+        q = _numbers_in(question)
+        ev.numbers |= q
+        ev.free |= q
+        ev.text = "\n".join(texts)
+        return ev
+
+    def add(self, value: float, unit: dict | None = None) -> None:
+        """A number from a tool result; `unit` from its column or key name (rag.units.column_unit)."""
+        v = abs(float(value))
+        self.numbers.add(v)
+        if unit is None:
+            self.free.add(v)
+        elif unit["scale"]:
+            self.absolute.add(v * unit["scale"])
+        # a percentage has no scale: it supports "5.4%" or "5.4", never "5.4 million"
 
     def supports(self, n: Num) -> bool:
-        """Is `n` supported at its written precision? With a unit word, compare absolute amounts
-        (evidence may be in raw units or already in thousands/millions/billions); without one, compare
-        as written or as a percentage <-> fraction."""
+        """Is `n` supported at its written precision? With a unit word, compare absolute amounts:
+        a number whose column names its scale counts only at that scale ("13.1" in op_income_bn is
+        13.1 billion, not 13.1 million); one of unknown unit may be at any scale. Without a unit
+        word, compare as written or as a percentage <-> fraction."""
         tol = 0.5 * 10 ** -n.decimals + 1e-9
         if n.unit:
             target, tol = n.value * n.unit, tol * n.unit
-            candidates = (v * s for v in self.numbers for s in (1.0, 1e3, 1e6, 1e9, 1e12))
+            candidates = itertools.chain((v * s for v in self.free for s in (1.0, 1e3, 1e6, 1e9, 1e12)),
+                                         self.absolute)
         else:
             # a percentage may restate a fraction (0.7 -> 70%); a plain number may restate a percentage
             # as a fraction (70 -> 0.70); never the other way round, or 3,991 would "support" 40%
@@ -163,26 +192,66 @@ class Evidence:
         return any(abs(c - target) <= max(tol, abs(target) * 1e-9) for c in candidates)
 
 
-def _walk(value, numbers: set, sources: dict, texts: list, collect_numbers: bool = True, key: str | None = None):
+def _is_num(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _walk(value, ev: Evidence, texts: list, collect_numbers: bool = True, key: str | None = None,
+          unit: dict | None = None):
+    """Collect sources, strings and numbers from a tool result. Numbers get the unit their column
+    or key names, where the result says which column or key they belong to."""
     if isinstance(value, dict):
         if "source_id" in value:
-            sources[value["source_id"]] = value.get("voice", "evidence")
+            ev.sources[value["source_id"]] = value.get("voice", "evidence")
+        if collect_numbers and isinstance(value.get("columns"), list) and isinstance(value.get("rows"), list):
+            _walk_rows(value, ev, texts)                       # a query result: units by column
+            rest = {k: v for k, v in value.items() if k not in ("rows",)}
+            for k, v in rest.items():
+                _walk(v, ev, texts, False if k == "columns" else collect_numbers, k)
+            return
+        # a summary value ("summary:H2:airlines_op_margin_pct") or a schema card column ("gain_bn")
+        own = None
+        sid = value.get("source_id")
+        if isinstance(sid, str) and sid.startswith("summary:"):
+            own = column_unit(sid.rsplit(":", 1)[-1])
+        elif isinstance(value.get("name"), str) and ("min" in value or "max" in value):
+            own = column_unit(value["name"])
         for k, v in value.items():
-            _walk(v, numbers, sources, texts, collect_numbers, k)
+            scoped = own if k in ("value", "min", "max", "examples") else None
+            _walk(v, ev, texts, collect_numbers, k, scoped)
     elif isinstance(value, list):
         for v in value:
-            _walk(v, numbers, sources, texts, collect_numbers, key)
+            _walk(v, ev, texts, collect_numbers, key, unit)
     elif isinstance(value, bool) or value is None:
         return
-    elif isinstance(value, (int, float)):
+    elif _is_num(value):
         if collect_numbers:
-            numbers.add(abs(float(value)))
+            ev.add(value, unit)
     elif isinstance(value, str):
         if key in ("sql", "label"):                    # the model's own SQL is not evidence
             return
         texts.append(value)
         if collect_numbers:
-            numbers.update(_numbers_in(value))
+            for v in _numbers_in(value):
+                ev.add(v, unit)
+
+
+def _walk_rows(result: dict, ev: Evidence, texts: list) -> None:
+    """Query rows: a cell takes its column's unit; in a row_label/value table (h1b_wealth_creation)
+    the `value` cell takes the unit its row's label names ("net_gain_neutral_tn"). Other cells in
+    that row keep their own unit, or none."""
+    columns = [str(c) for c in result["columns"]]
+    units = [column_unit(c) for c in columns]
+    label_col = columns.index("row_label") if "row_label" in columns else None
+    for row in result["rows"]:
+        if not isinstance(row, list):
+            continue
+        row_unit = column_unit(row[label_col]) if label_col is not None and label_col < len(row) \
+            and isinstance(row[label_col], str) else None
+        for i, cell in enumerate(row):
+            u = units[i] if i < len(units) else None
+            name = columns[i] if i < len(columns) else None
+            _walk(cell, ev, texts, True, name, u if u is not None or name != "value" else row_unit)
 
 
 # ---------------------------------------------------------------- text structure
