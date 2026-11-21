@@ -9,7 +9,11 @@
                                     gate a candidate build and publish it as an immutable release
     python -m rag ask "question" [--json] [--release ID] [--effort low|medium|high|xhigh|max]
                                     answer a question with the agent on the CURRENT release;
-                                    exits 1 unless the answer completed (refusal, max_tokens, ...)
+                                    exits 1 unless the answer completed and passed its checks;
+                                    every answer is written to the audit log first (exit 2 and no
+                                    answer if it cannot be)
+    python -m rag audit [--verify | --tail N | --show RECORD_ID]
+                                    check the audit log's hash chain, list or show records
 """
 from __future__ import annotations
 
@@ -91,6 +95,12 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--json", action="store_true", help="print the full answer record as JSON")
     a.add_argument("--release", metavar="RELEASE_ID", help="a release other than CURRENT")
     a.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default="medium")
+    a.add_argument("--user", help="who is asking (recorded in the audit log)")
+    au = sub.add_parser("audit", help="check or read the audit log")
+    ag = au.add_mutually_exclusive_group()
+    ag.add_argument("--verify", action="store_true", help="re-walk the hash chain (the default)")
+    ag.add_argument("--tail", type=int, metavar="N", help="list the last N records")
+    ag.add_argument("--show", metavar="RECORD_ID", help="print one record as JSON")
     args = p.parse_args(argv)
 
     if args.cmd == "doctor":
@@ -98,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
     settings = load_settings()
     if args.cmd == "ask":
         return ask(settings, args)
+    if args.cmd == "audit":
+        return audit(settings, args)
     if args.cmd == "release":
         return release(settings, args)
     if args.cmd == "manifest":
@@ -106,16 +118,49 @@ def main(argv: list[str] | None = None) -> int:
     return ingest(settings, args.what)
 
 
+def audit(settings, args) -> int:
+    import json as _json
+    from .agent.audit import AuditLog
+    log = AuditLog(settings.audit_dir)
+    if args.show:
+        r = log.find(args.show)
+        if r is None:
+            print(f"no record {args.show} in {settings.audit_dir}")
+            return 1
+        print(_json.dumps(r, indent=2, ensure_ascii=False))
+        return 0
+    if args.tail is not None:
+        rows = [r for _, _, r in log.records() if isinstance(r, dict)][-args.tail:] if args.tail > 0 else []
+        for r in rows:
+            status = "error" if r.get("event") == "error" else ("FLAGGED" if r.get("flagged") else "passed")
+            print(f"#{r.get('seq', '?')!s:<5} {r.get('ts', '?')}  {r.get('record_id', '?')}  {status:7}  "
+                  f"{str(r.get('question', ''))[:70]}")
+        print(f"{len(rows)} record(s) shown from {settings.audit_dir}")
+        return 0
+    problems = log.verify()
+    count = sum(1 for _ in log.records())
+    for p in problems:
+        print(f"PROBLEM  {p}")
+    print(f"{count} record(s) in {settings.audit_dir}: " + ("chain intact" if not problems else f"{len(problems)} problem(s)"))
+    return 0 if not problems else 1
+
+
 def ask(settings, args) -> int:
     import json as _json
+    import sys as _sys
     from .agent import orchestrator
-    from .agent.verifier import ask_checked
+    from .agent.audit import AuditError, AuditLog, ask_audited
     session = orchestrator.open_session(settings, args.release, effort=args.effort)
-    checked = ask_checked(session, args.question)
+    try:
+        checked, record = ask_audited(session, args.question, AuditLog(settings.audit_dir), user=args.user)
+    except AuditError as e:
+        print(f"answer withheld: {e}", file=_sys.stderr)
+        return 2
     a, v = checked.answer, checked.verification
     good = a.ok and v.passed
     if args.json:
-        print(_json.dumps(checked.to_dict(), indent=2, ensure_ascii=False, default=str))
+        print(_json.dumps({**checked.to_dict(), "audit_record_id": record["record_id"]},
+                          indent=2, ensure_ascii=False, default=str))
         return 0 if good else 1
     if checked.flagged:
         how = ("after one revision" if checked.revised else
@@ -139,6 +184,7 @@ def ask(settings, args) -> int:
     print(f"checks: {'passed' if v.passed else 'FAILED'} ({v.numbers_supported}/{v.numbers_checked} numbers "
           f"supported" + ("; revised once" if checked.revised else "") + ")"
           + "".join(f"\n  warning: {x.detail}" for x in v.violations if x.severity == "warning"))
+    print(f"audit record: {record['record_id']} (#{record['seq']})")
     return 0 if good else 1
 
 
