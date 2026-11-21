@@ -27,7 +27,9 @@ def errors(v, rule=None):
 
 @pytest.fixture
 def query(toolset):
-    sql = "SELECT 5.428724 AS airlines_pct, 27.438 AS bigtech_pct, 0.7 AS survival, 13100000000 AS op_income, 3991 AS gain"
+    # FROM a real table: results of literal-only queries are deliberately not evidence
+    sql = ("SELECT 5.428724 AS airlines_pct, 27.438 AS bigtech_pct, 0.7 AS survival, 13100000000 AS op_income, "
+           "3991 AS gain FROM h3c_top20_2014 LIMIT 1")
     c = call(toolset, "query_table", {"sql": sql})
     return c, c.result["results"][0]["source_id"]
 
@@ -246,3 +248,153 @@ def test_cli_exits_nonzero_for_a_flagged_answer(toolset, monkeypatch, capsys):
         toolset, FakeClaude(resp(t("Survival was 42%.")), resp(t("Still 42%.")))))
     assert main(["ask", "q", "--json"]) == 1
     assert json.loads(capsys.readouterr().out)["flagged"] is True
+
+
+# ---------------------------------------------------------------- code review findings (PR #12, whole-app review)
+def test_a_follow_up_may_rely_on_earlier_questions_tool_results(toolset):
+    """Same session: the second answer uses get_claim's result from the first question, with no new call."""
+    client = FakeClaude(resp(tool("a", "get_claim", {"id": "H1"}), stop="tool_use"),
+                        resp(t("H1's verdict is Partly holds.", ["claim:H1"])),
+                        resp(t("H1, rated Partly holds, covers chapter 7.", ["claim:H1"])))
+    s = session(toolset, client)
+    ask_checked(s, "H1?")
+    follow = ask_checked(s, "Which chapter?")
+    assert follow.verification.passed and not follow.revised and len(s.calls_history) == 1
+
+
+def test_calls_history_rolls_back_with_the_messages(toolset):
+    class Boom(Exception):
+        pass
+    client = FakeClaude(resp(tool("a", "list_claims", {}), stop="tool_use"))
+    s = session(toolset, client)
+    real = client._create
+
+    def create(**params):
+        if client.requests:
+            raise Boom()
+        return real(**params)
+    client.beta.messages.create = create
+    with pytest.raises(Boom):
+        s.ask("q")
+    assert s.calls_history == [] and s.messages == []
+
+
+@pytest.mark.parametrize("text, checked, unsupported", [
+    ("The slope was -0.45.", 1, ["0.45"]), ("Margins fell −12.3%.", 1, ["12.3"]),
+    ("Returns ranged 5-40%.", 2, ["40"]), ("Shares fell .45 points.", 1, [".45"])])
+def test_negative_ranged_and_leading_dot_numbers_are_checked(toolset, query, text, checked, unsupported):
+    c, sid = query
+    v = verify(answer([(text, [sid])], [c]), toolset)
+    assert v.numbers_checked == checked and [x.split("'")[1] for x in errors(v, "numbers")] == unsupported
+
+
+def test_a_unit_word_must_match_the_scale(toolset, query):
+    c, sid = query                       # op_income = 13,100,000,000
+    assert verify(answer([("Income was $13.1 billion.", [sid])], [c]), toolset).passed
+    assert errors(verify(answer([("Income was $13.1 million.", [sid])], [c]), toolset), "numbers")
+    assert errors(verify(answer([("Survival was 700.", [sid])], [c]), toolset), "numbers")   # 0.7 is not 700
+
+
+def test_the_publication_date_does_not_support_other_numbers(toolset):
+    v = verify(answer([("It was published 16 September 2014. Margins were 16%, about 0.2 or 20%.", [])], []), toolset)
+    assert sorted(x.split("'")[1] for x in errors(v, "numbers")) == ["0.2", "16", "20"]
+
+
+def test_literal_only_queries_and_echoed_sql_are_not_evidence(toolset):
+    literal = call(toolset, "query_table", {"sql": "SELECT 42 AS survival_pct"})
+    sid = literal.result["results"][0]["source_id"]
+    assert errors(verify(answer([("Survival was 42%.", [sid])], [literal]), toolset), "numbers")
+    where = call(toolset, "query_table", {"sql": "SELECT firm FROM h3c_top20_2014 WHERE rank_2014 < 77"})
+    sid = where.result["results"][0]["source_id"]
+    assert errors(verify(answer([("The cutoff was 77.", [sid])], [where]), toolset), "numbers")
+
+
+def test_one_untested_word_no_longer_disables_the_verdict_checks(toolset):
+    claims = call(toolset, "list_claims", {})
+    v = verify(answer([("H1 Holds, with a twist, while H9 has not been tested.", ["claim:H1"])], [claims]), toolset)
+    assert "H1's verdict is 'Partly holds'" in errors(v, "verdicts")[0]
+    v = verify(answer([("H9 Partly holds; the write-up is pending.", ["claim:H9"])], [claims]), toolset)
+    assert "given to H9, which is untested" in errors(v, "verdicts")[0]
+
+
+def test_decimals_do_not_cut_the_sentence(toolset, query):
+    claims = call(toolset, "list_claims", {})
+    c, _ = query
+    v = verify(answer([("H1 (r = 0.7) Holds, with a twist.", ["claim:H1"])], [claims, c]), toolset)
+    assert "H1's verdict is 'Partly holds'" in errors(v, "verdicts")[0]
+
+
+def test_lowercase_multi_word_verdicts_are_caught(toolset):
+    claims = call(toolset, "list_claims", {})
+    v = verify(answer([("Overall, H9 partly holds up in the data.", ["claim:H9"])], [claims]), toolset)
+    assert errors(v, "verdicts")
+    v = verify(answer([("Chapter 9's advice partly holds.", ["claim:H1"])], [claims]), toolset)
+    assert "chapter 9, which no hypothesis tests" in errors(v, "verdicts")[0]
+
+
+def test_a_verdict_is_judged_against_the_claim_it_is_attached_to(toolset):
+    claims = call(toolset, "list_claims", {})
+    ok = answer([("H9 is untested, but H1 Partly holds.", ["claim:H1"])], [claims])
+    assert verify(ok, toolset).passed
+    wrong = answer([("Unlike H9, H3 Partly holds.", ["claim:H3"])], [claims])
+    assert "H3's verdict is 'Holds, with a twist'" in errors(verify(wrong, toolset), "verdicts")[0]
+
+
+def test_untested_chapter_rule_only_for_chapters_the_answer_is_about(toolset):
+    nine = call(toolset, "get_chapter", {"chapter": 9})
+    claims = call(toolset, "get_claim", {"id": "H1"})
+    about_h1 = answer([("H1's verdict is Partly holds.", ["claim:H1"])], [nine, claims], question="What about H1?")
+    assert verify(about_h1, toolset).passed                               # chapter 9 fetched incidentally
+    elsewhere = answer([("Chapter 9 covers founders. H1's write-up is pending.", ["chapter:9"])], [nine],
+                       question="Chapter 9?")
+    assert errors(verify(elsewhere, toolset), "untested")                 # 'pending' is not about chapter 9
+
+
+def test_violations_are_not_duplicated_across_attempts(toolset):
+    nine = call(toolset, "get_chapter", {"chapter": 9})
+    a = answer([("Chapter 9 covers founders.", ["chapter:9"])], [nine], question="Chapter 9?")
+    v = verify(a, toolset, prior_calls=[nine])
+    assert len(errors(v, "untested")) == 1
+
+
+@pytest.mark.parametrize("text", ["I can't tell you whether you should buy Tesla stock.",
+                                  "Nobody can say if investors should sell now.",
+                                  "Thiel says investors should avoid competitive industries."])
+def test_refusals_and_paraphrases_are_not_advice(toolset, text):
+    assert not errors(verify(answer([(text, [])], []), toolset), "advice")
+
+
+def test_a_failed_revision_returns_the_first_answer_flagged(toolset):
+    class Overloaded(Exception):
+        pass
+    client = FakeClaude(resp(t("Survival was 42%.")))
+    real = client._create
+
+    def create(**params):
+        if client.requests:
+            raise Overloaded("529")
+        return real(**params)
+    client.beta.messages.create = create
+    r = ask_checked(session(toolset, client), "q")
+    assert r.flagged and not r.revised and r.answer.text == "Survival was 42%." and "Overloaded" in r.revision_error
+
+
+def test_the_record_keeps_both_attempts(toolset):
+    client = FakeClaude(resp(tool("a", "get_claim", {"id": "H1"}), stop="tool_use"),
+                        resp(t("H1 Partly holds, from 999 firms.", ["claim:H1"])),
+                        resp(t("H1's verdict is Partly holds.", ["claim:H1"])))
+    r = ask_checked(session(toolset, client), "H1?")
+    d = r.to_dict()
+    assert d["first_answer"]["text"] == "H1 Partly holds, from 999 firms."
+    assert [c["name"] for c in d["first_answer"]["tool_calls"]] == ["get_claim"]
+    assert d["usage_total"]["input_tokens"] == 3 and [c.name for c in r.all_tool_calls] == ["get_claim"]
+
+
+def test_cli_warns_even_when_the_revision_was_cut_off(toolset, monkeypatch, capsys):
+    import rag.agent.orchestrator as orch
+    from rag.__main__ import main
+    monkeypatch.setattr(orch, "open_session", lambda *a, **k: session(
+        toolset, FakeClaude(resp(t("Survival was 42%.")), resp(t("Partial"), stop="max_tokens"))))
+    assert main(["ask", "q"]) == 1
+    out = capsys.readouterr().out
+    assert "WARNING: this answer failed the automated checks after one revision" in out and "[incomplete]" in out

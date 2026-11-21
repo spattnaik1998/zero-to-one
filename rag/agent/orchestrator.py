@@ -151,6 +151,8 @@ class Session:
         self.system = SYSTEM_PROMPT.format(today=(today or date.today()).isoformat(),
                                            release_id=toolset.release.release_id)
         self.messages: list[dict] = []
+        # every tool call whose result is in the history: a follow-up answer may rely on any of them
+        self.calls_history: list[ToolCall] = []
         self.context_tokens = 0
 
     @property
@@ -196,11 +198,12 @@ class Session:
             raise ValueError("question must be a non-empty string")
         if self.context_tokens > CONTEXT_LIMIT:
             raise ContextLimitError(f"this session holds about {self.context_tokens:,} tokens; start a new session")
-        checkpoint = len(self.messages)
+        checkpoint, calls_checkpoint = len(self.messages), len(self.calls_history)
         try:
             return self._ask(question.strip())
         except BaseException:
             del self.messages[checkpoint:]                  # leave the history exactly as it was
+            del self.calls_history[calls_checkpoint:]
             raise
 
     def _ask(self, question: str) -> Answer:
@@ -242,6 +245,7 @@ class Session:
                 content, call = self._run_tool(block)
                 results.append(content)
                 calls.append(call)
+                self.calls_history.append(call)
             self.messages.append({"role": "user", "content": results})
             if turns >= self.max_turns:
                 break                                       # defensive: tool_choice none should prevent this

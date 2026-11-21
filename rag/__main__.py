@@ -117,8 +117,10 @@ def ask(settings, args) -> int:
     if args.json:
         print(_json.dumps(checked.to_dict(), indent=2, ensure_ascii=False, default=str))
         return 0 if good else 1
-    if checked.flagged and a.ok:
-        print("WARNING: this answer failed the automated checks after one revision:")
+    if checked.flagged:
+        how = ("after one revision" if checked.revised else
+               f"and could not be revised ({checked.revision_error})" if checked.revision_error else "")
+        print(f"WARNING: this answer failed the automated checks {how}:".replace("  ", " ").replace(" :", ":"))
         for x in v.errors:
             print(f"  - [{x.rule}] {x.detail}")
         print()
@@ -128,11 +130,12 @@ def ask(settings, args) -> int:
         print("Sources:")
         for c in dict.fromkeys((c.source_id, c.title) for c in a.citations):
             print(f"  [{c[0]}] {c[1] or ''}")
-    calls = ", ".join(f"{t.name}{'' if t.ok else ' (error)'}" for t in a.tool_calls) or "none"
+    calls = ", ".join(f"{t.name}{'' if t.ok else ' (error)'}" for t in checked.all_tool_calls) or "none"
+    u = checked.usage
     print()
-    print(f"{a.turns} model turn(s); tools: {calls}; release {a.release_id}; model {a.model}; "
-          f"tokens in {a.usage['input_tokens']} (cache read {a.usage['cache_read_input_tokens']}), "
-          f"out {a.usage['output_tokens']}" + ("; budget exhausted" if a.budget_exhausted else ""))
+    print(f"{a.turns} model turn(s) in the final attempt; tools: {calls}; release {a.release_id}; model {a.model}; "
+          f"tokens in {u['input_tokens']} (cache read {u['cache_read_input_tokens']}), "
+          f"out {u['output_tokens']}" + ("; budget exhausted" if a.budget_exhausted else ""))
     print(f"checks: {'passed' if v.passed else 'FAILED'} ({v.numbers_supported}/{v.numbers_checked} numbers "
           f"supported" + ("; revised once" if checked.revised else "") + ")"
           + "".join(f"\n  warning: {x.detail}" for x in v.violations if x.severity == "warning"))
