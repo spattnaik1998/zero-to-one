@@ -129,11 +129,12 @@ def audit(settings, args) -> int:
             return 1
         print(_json.dumps(r, indent=2, ensure_ascii=False))
         return 0
-    if args.tail:
-        rows = [r for _, _, r in log.records() if r][-args.tail:]
+    if args.tail is not None:
+        rows = [r for _, _, r in log.records() if isinstance(r, dict)][-args.tail:] if args.tail > 0 else []
         for r in rows:
-            status = "error" if r["event"] == "error" else ("FLAGGED" if r["flagged"] else "passed")
-            print(f"#{r['seq']:<5} {r['ts']}  {r['record_id']}  {status:7}  {r['question'][:70]}")
+            status = "error" if r.get("event") == "error" else ("FLAGGED" if r.get("flagged") else "passed")
+            print(f"#{r.get('seq', '?')!s:<5} {r.get('ts', '?')}  {r.get('record_id', '?')}  {status:7}  "
+                  f"{str(r.get('question', ''))[:70]}")
         print(f"{len(rows)} record(s) shown from {settings.audit_dir}")
         return 0
     problems = log.verify()

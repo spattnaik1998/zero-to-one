@@ -13,7 +13,7 @@ Built:
                    investment advice. ask_checked(session, q): verify, revise once, then flag.
                    `python -m rag ask "..."` uses it.
   audit.py         append-only, hash-chained log of every question: each attempt with its tool
-                   calls and their results, citations, both verifications, release id and
+                   calls (input, source ids, result SHA-256), citations, both verifications, release id and
                    digest, model, tokens, timing, session and user; errors too. Cross-process
                    lock; verify() detects edited, deleted, reordered or truncated records.
                    ask_audited(session, q, log): an answer that cannot be logged is not returned.

@@ -7,9 +7,13 @@ an edited record (hash mismatch), a deleted, reordered or inserted one (sequence
 and records cut from the end (HEAD ahead of the files).
 
 A record holds what is needed to reconstruct why an answer was shown: the question; every
-attempt (text, tool calls with their results, citations); both verifications; whether it was
-revised or flagged; the release id and content digest; model and effort; tokens; timing; and the
-session id. A question that fails with an exception is logged as an "error" record.
+attempt (text, citations, and each tool call's name, input, the source ids it returned and a
+SHA-256 of its result, not the result itself); both verifications; whether it was revised or
+flagged; the release id and content digest; model and effort; tokens; timing; and the session id.
+A question that fails with an exception is logged as an "error" record.
+
+Releases are immutable, so a lookup can be replayed from its input and the release id;
+`result_digest` of the replayed result must equal the recorded `result_sha256`.
 
 Writes take a cross-process lock (an atomic lock file), so concurrent sessions cannot fork the
 chain. If a record cannot be written, AuditError is raised and the caller must not show the
@@ -96,10 +100,24 @@ class AuditLog:
 
     # ------------------------------------------------------------ writing
     def _head(self) -> dict:
+        """The chain's last record. Normally HEAD.json; but a writer that crashed after appending its
+        line and before moving HEAD leaves the files one record ahead, and continuing from the stale
+        HEAD would fork the chain, so the newest file's last intact record wins when it is ahead."""
         f = self.dir / "HEAD.json"
-        if not f.is_file():
-            return {"seq": 0, "hash": GENESIS}
-        return json.loads(f.read_text(encoding="utf-8"))
+        head = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {"seq": 0, "hash": GENESIS}
+        files = self.files()
+        if files:
+            last = None
+            for line in files[-1].read_text(encoding="utf-8").splitlines():
+                try:
+                    r = json.loads(line) if line.strip() else None
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(r, dict) and r.get("hash") == record_hash(r):
+                    last = r
+            if last and last.get("seq", 0) > head["seq"]:
+                head = {"seq": last["seq"], "hash": last["hash"], "file": files[-1].name}
+        return head
 
     def append(self, record: dict) -> dict:
         """Add a record to the chain and return it with seq, prev_hash and hash filled in."""
@@ -108,14 +126,19 @@ class AuditLog:
             with _Lock(self.dir / ".lock"):
                 head = self._head()
                 now = self.clock()
-                full = _clean({"schema": SCHEMA, "record_id": uuid.uuid4().hex, "ts": now.isoformat(timespec="milliseconds"),
-                               "seq": head["seq"] + 1, "prev_hash": head["hash"], **record})
+                # the chain fields come last so a record's own keys can never override them
+                full = _clean({**{k: v for k, v in record.items() if k != "hash"}, "schema": SCHEMA,
+                               "record_id": uuid.uuid4().hex, "ts": now.isoformat(timespec="milliseconds"),
+                               "seq": head["seq"] + 1, "prev_hash": head["hash"]})
                 full["hash"] = record_hash(full)
                 line = json.dumps(full, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n"
                 # never write to a file older than HEAD's (a clock that went backwards would break file order)
                 path = self.dir / max(f"audit-{now:%Y-%m-%d}.jsonl", head.get("file", ""))
+                # a crashed write can leave a partial last line: start on a fresh line so this record
+                # stays intact and the partial one remains visible to verify()
+                torn = path.is_file() and path.stat().st_size > 0 and not path.read_bytes().endswith(b"\n")
                 with open(path, "a", encoding="utf-8", newline="\n") as f:
-                    f.write(line)
+                    f.write(("\n" if torn else "") + line)
                     f.flush()
                     os.fsync(f.fileno())
                 tmp = self.dir / "HEAD.json.tmp"
@@ -174,8 +197,8 @@ class AuditLog:
         problems, expected_seq, prev = [], 1, GENESIS
         for name, n, r in self.records():
             where = f"{name}:{n}"
-            if r is None:
-                problems.append(f"{where}: not valid JSON")
+            if not isinstance(r, dict) or not isinstance(r.get("seq"), int):
+                problems.append(f"{where}: " + ("not valid JSON" if r is None else "not an audit record"))
                 continue
             if r.get("hash") != record_hash(r):
                 problems.append(f"{where}: record {r.get('seq')} has been modified (hash mismatch)")
@@ -184,10 +207,14 @@ class AuditLog:
                                 "(records deleted, inserted or reordered)")
             if r.get("prev_hash") != prev:
                 problems.append(f"{where}: record {r.get('seq')} does not link to the record before it")
-            expected_seq, prev = (r.get("seq") or 0) + 1, r.get("hash")
+            expected_seq, prev = r["seq"] + 1, r.get("hash")
         head_file = self.dir / "HEAD.json"
         if head_file.is_file():
-            head = json.loads(head_file.read_text(encoding="utf-8"))
+            try:
+                head = json.loads(head_file.read_text(encoding="utf-8"))
+                head["seq"], head["hash"]
+            except (ValueError, KeyError, TypeError):
+                return problems + ["HEAD.json is unreadable"]
             if head["seq"] != expected_seq - 1 or head["hash"] != prev:
                 problems.append(f"HEAD points at record {head['seq']}, but the files end at record {expected_seq - 1} "
                                 "(records removed from the end, or HEAD altered)")
@@ -196,12 +223,39 @@ class AuditLog:
         return problems
 
 
+def result_digest(result) -> str | None:
+    """SHA-256 of a tool result in canonical JSON: what a replay on the same release must reproduce."""
+    if result is None:
+        return None
+    text = json.dumps(_clean(result), sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+                      allow_nan=False, default=str)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _source_ids(value, out=None) -> list[str]:
+    """Every source_id in a tool result, in order, without repeats."""
+    out = [] if out is None else out
+    if isinstance(value, dict):
+        if isinstance(value.get("source_id"), str) and value["source_id"] not in out:
+            out.append(value["source_id"])
+        for v in value.values():
+            _source_ids(v, out)
+    elif isinstance(value, list):
+        for v in value:
+            _source_ids(v, out)
+    return out
+
+
 def _attempt(a) -> dict:
     return {"text": a.text, "stop_reason": a.stop_reason, "turns": a.turns, "budget_exhausted": a.budget_exhausted,
             "usage": a.usage, "model": a.model,
             "tool_calls": [{"name": t.name, "input": t.input, "ok": t.ok, "error": t.error, "ms": t.ms,
-                            "result": t.result} for t in a.tool_calls],
-            "citations": [{"source_id": c.source_id, "title": c.title, "cited_text": c.cited_text} for c in a.citations]}
+                            "source_ids": _source_ids(t.result), "result_sha256": result_digest(t.result)}
+                           for t in a.tool_calls],
+            # the cited text is tool-result content (up to a whole result block): fingerprint, don't copy
+            "citations": [{"source_id": c.source_id, "title": c.title,
+                           "cited_text_sha256": hashlib.sha256((c.cited_text or "").encode("utf-8")).hexdigest()}
+                          for c in a.citations]}
 
 
 def ask_audited(session, question: str, audit: AuditLog, user: str | None = None):

@@ -12,7 +12,7 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from rag.agent.audit import GENESIS, AuditError, AuditLog, ask_audited, record_hash
+from rag.agent.audit import GENESIS, AuditError, AuditLog, ask_audited, record_hash, result_digest
 from rag.agent.orchestrator import Session
 from rag.config import ROOT
 
@@ -202,7 +202,13 @@ def test_a_revised_answer_is_recorded_with_both_attempts_and_their_evidence(tool
     first, second = stored["attempts"]
     assert first["text"] == "H1 Partly holds, from 999 firms." and second["tool_calls"] == []
     call = first["tool_calls"][0]
-    assert call["name"] == "get_claim" and call["result"]["results"][0]["verdict"] == "Partly holds"   # the evidence
+    assert call["name"] == "get_claim" and call["input"] == {"id": "H1"} and "result" not in call   # ids, not data
+    assert call["source_ids"][0] == "claim:H1" and len(call["result_sha256"]) == 64
+    cite = second["citations"][0]
+    assert cite["source_id"] == "claim:H1" and "cited_text" not in cite and len(cite["cited_text_sha256"]) == 64
+    # the release is immutable: replaying the lookup reproduces the recorded fingerprint
+    replay = toolset.call("get_claim", {"id": "H1"})
+    assert result_digest(replay) == call["result_sha256"]
     assert stored["first_verification"]["passed"] is False and stored["verification"]["passed"] is True
     assert stored["cited_sources"] == ["claim:H1"] and stored["usage_total"]["input_tokens"] == 30
     assert stored["duration_ms"] >= 0
@@ -272,3 +278,43 @@ def test_cli_audit_verify_fails_on_tampering(cli, capsys):
     f.write_text(f.read_text(encoding="utf-8").replace("Plain answer.", "Edited answer."), encoding="utf-8")
     capsys.readouterr()
     assert cli("audit") == 1 and "has been modified" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- crash recovery (second review)
+def test_a_crash_before_head_moved_does_not_fork_the_chain(log):
+    head = (log.dir / "HEAD.json").read_text()
+    log.append({"event": "answer", "question": "q3"})
+    (log.dir / "HEAD.json").write_text(head)                  # crashed after the line, before HEAD
+    log.append({"event": "answer", "question": "q4"})
+    assert [r["seq"] for r in lines(log)] == [1, 2, 3, 4, 5] and log.verify() == []
+
+
+def test_a_torn_last_line_stays_visible_and_the_next_record_is_intact(log):
+    f = log.files()[0]
+    f.write_bytes(f.read_bytes() + b'{"partial": tru')         # crashed mid-write
+    r = log.append({"event": "answer", "question": "after the crash"})
+    assert log.find(r["record_id"]) == r
+    assert [p.split(": ", 1)[1] for p in log.verify()] == ["not valid JSON"]
+
+
+def test_an_unreadable_head_is_reported(log):
+    (log.dir / "HEAD.json").write_text("{broken")
+    assert "HEAD.json is unreadable" in log.verify()
+
+
+def test_cli_tail_zero_lists_nothing(cli, capsys):
+    cli("ask", "q", responses=[resp(t("Plain answer."))])
+    capsys.readouterr()
+    assert cli("audit", "--tail", "0") == 0 and capsys.readouterr().out.startswith("0 record(s)")
+
+
+def test_a_record_cannot_override_the_chain_fields(tmp_path):
+    log = AuditLog(tmp_path / "audit")
+    r = log.append({"event": "answer", "seq": 99, "prev_hash": "x", "hash": "y", "schema": 0})
+    assert r["seq"] == 1 and r["prev_hash"] == GENESIS and r["schema"] == 1 and log.verify() == []
+
+
+def test_a_foreign_json_line_is_reported_not_a_crash(log, cli, capsys):
+    f = log.files()[0]
+    f.write_text(f.read_text(encoding="utf-8") + '{"seq": "three"}\n[1, 2]\n', encoding="utf-8")
+    assert sum("not an audit record" in p for p in log.verify()) == 2
