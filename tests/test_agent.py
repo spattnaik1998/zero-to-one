@@ -273,11 +273,29 @@ def test_smoke_verdict_patterns_come_from_the_report():
     assert not hit("whether chapter 9's advice holds up") and not hit("it holds")
 
 
+def test_smoke_forbids_a_verdict_only_next_to_the_untested_chapter():
+    import re
+    from rag.eval.agent_smoke import CASES
+    pats = next(c for c in CASES if c.name.startswith("untested")).must_not_match
+    hit = lambda s: any(re.search(p, s, re.I | re.M) for p in pats)  # noqa: E731
+    assert hit("Chapter 9 Partly holds.") and hit("H9 is rated Holds, with a twist.")
+    assert not hit("The tested claims differ: H2 Partly holds. Chapter 9 is untested.")
+    assert not hit("For comparison, H7 Holds, with a caveat.")
+
+
 # ---------------------------------------------------------------- live (opt-in, costs a few cents)
 @pytest.mark.skipif(os.environ.get("RAG_LIVE_TESTS") != "1", reason="set RAG_LIVE_TESTS=1 to call Claude and OpenAI")
 def test_live_agent():
     from rag.agent.orchestrator import open_session
+    from rag.agent.verifier import ask_checked
     from rag.config import load_settings
     from rag.eval.agent_smoke import run_all
-    failures = [r for r in run_all(open_session(load_settings())) if not r["ok"]]
+    base = open_session(load_settings())
+    failures = [r for r in run_all(base) if not r["ok"]]
     assert not failures, failures
+    # a follow-up question in the same session resends the whole history, including the first final
+    # answer; this failed with "text content blocks must be non-empty" before empty blocks were dropped
+    s = base.new_session()
+    first = ask_checked(s, "What is the verdict on H2?")
+    follow = ask_checked(s, "And which chapters does it come from?")
+    assert first.answer.ok and follow.answer.ok and follow.verification.passed
