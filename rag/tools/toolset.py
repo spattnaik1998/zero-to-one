@@ -172,7 +172,8 @@ class Toolset:
         self.headline = {}
         for hyp, path, vtype, vnum, vtext in rows:
             self.headline.setdefault(hyp, []).append(
-                {"source_id": f"summary:{hyp}:{path}", "path": path, "value": _typed(vtype, vnum, vtext)})
+                {"source_id": f"summary:{hyp}:{path}", "voice": "evidence", "label": f"Summary value {hyp} {path}",
+                 "path": path, "value": _typed(vtype, vnum, vtext)})
 
     def _json(self, name: str):
         return json.loads(self.release.file(name).read_text(encoding="utf-8"))
@@ -215,10 +216,14 @@ class Toolset:
         if opinion_only is not None and not isinstance(opinion_only, bool):
             raise ToolError("opinion_only must be true or false")
         hits = self._search("notes", query, k, {"chapter": chapter, "opinion": True if opinion_only else None})
-        return {"results": [{
-            "source_id": h.doc_id, "voice": "analyst", "opinion": h.meta["opinion"],
-            "chapter": h.meta["chapter"], "chapter_title": h.meta["chapter_title"], "page": h.meta["page"],
-            "text": h.text} for h in hits]}
+        return {"results": [self._note(h.doc_id, h.meta["opinion"], h.meta["chapter"], h.text,
+                                       chapter_title=h.meta["chapter_title"], page=h.meta["page"]) for h in hits]}
+
+    @staticmethod
+    def _note(source_id: str, opinion: bool, chapter: int, text: str, **extra) -> dict:
+        who = "Analyst's opinion" if opinion else "Analyst's note"
+        return {"source_id": source_id, "voice": "analyst", "label": f"{who}, chapter {chapter}",
+                "opinion": opinion, "chapter": chapter, **extra, "text": text}
 
     def tool_search_analysis(self, query, hypothesis=None, kind=None, k=None) -> dict:
         hypothesis = self._hypothesis(hypothesis)
@@ -226,7 +231,11 @@ class Toolset:
             raise ToolError(f"kind must be one of {list(KINDS)}")
         hits = self._search("analysis", query, k, {"hypothesis": hypothesis, "kind": kind})
         return {"results": [{
-            "source_id": h.doc_id, "voice": h.meta["voice"], "hypothesis": h.meta["hypothesis"],
+            "source_id": h.doc_id, "voice": h.meta["voice"],
+            "label": (f"Thiel, quoted in {h.meta['hypothesis']}" if h.meta["voice"] == "thiel" else
+                      "Analysis " + " · ".join(x for x in (h.meta["hypothesis"], h.meta["section"]) if x)
+                      + f" ({h.meta['kind']})"),
+            "hypothesis": h.meta["hypothesis"],
             "sub_claim": h.meta["sub_claim"], "kind": h.meta["kind"], "section": h.meta["section"],
             "notebook": h.meta["notebook"], "cell": h.meta["cell"], "cell_type": h.meta["cell_type"],
             "text": h.text} for h in hits]}
@@ -235,19 +244,26 @@ class Toolset:
         if type is not None and type not in ("table", "figure"):
             raise ToolError("type must be 'table' or 'figure'")
         hits = self._search("catalog", query, k, {"type": type, "hypothesis": self._hypothesis(hypothesis)})
-        return {"results": [{"source_id": h.doc_id, "voice": "evidence", "type": h.meta["type"],
-                             "name": h.meta["name"], "hypothesis": h.meta["hypothesis"], "text": h.text}
-                            for h in hits]}
+        return {"results": [{"source_id": h.doc_id, "voice": "evidence",
+                             "label": f"{h.meta['type'].title()} {h.meta['name']} ({h.meta['hypothesis']})",
+                             "type": h.meta["type"], "name": h.meta["name"], "hypothesis": h.meta["hypothesis"],
+                             "text": h.text} for h in hits]}
 
     # ------------------------------------------------------------ registry
     def _claim_view(self, c: dict, full: bool) -> dict:
-        view = {"source_id": f"claim:{c['id']}", "voice": "evidence", "id": c["id"], "title": c["title"],
+        view = {"source_id": f"claim:{c['id']}", "voice": "evidence",
+                "label": f"Claim {c['id']}: {c['title']} (status {c['status']})",
+                "id": c["id"], "title": c["title"],
                 "claim": c["claim"], "chapters": c["chapters"], "status": c["status"],
                 # verdicts and one-line findings exist only for final claims (the registry enforces it)
                 "verdict": c["verdict"], "one_line": c["one_line"]}
         if full:
-            view.update({k: c[k] for k in ("thiel_quote", "sub_claims", "caveats", "notebook", "tables", "figures",
+            view.update({k: c[k] for k in ("sub_claims", "caveats", "notebook", "tables", "figures",
                                            "note_ids", "summary_keys")})
+            # Thiel's words are their own citable item in his voice, not part of the evidence record
+            view["thiel_quote"] = ({"source_id": f"quote:{c['id']}", "voice": "thiel",
+                                    "label": f"Thiel, quoted in {c['id']}", "text": c["thiel_quote"]}
+                                   if c["thiel_quote"] else None)
             view["headline_values"] = self.headline.get(c["id"], [])
             if c["status"] != "final":
                 view["note"] = ("no verdict: this claim is " + c["status"].replace("_", " ")
@@ -267,13 +283,13 @@ class Toolset:
         number = _int(chapter, "chapter", 0, 0, 15)
         e = self.chapters[number]
         return {"results": [{
-            "source_id": f"chapter:{number}", "voice": "evidence", "chapter": number, "title": e["title"],
-            "tested": e["tested"],
+            "source_id": f"chapter:{number}", "voice": "evidence",
+            "label": f"Chapter {e['title']}" + ("" if e["tested"] else " (untested)"),
+            "chapter": number, "title": e["title"], "tested": e["tested"],
             "hypotheses": [self._claim_view(self.claims[h], full=False) for h in e["hypotheses"]],
             "untested_placeholders": list(e["untested"]),
             "note": None if e["tested"] else "no hypothesis tests this chapter; say so instead of giving a verdict",
-            "notes": [{"source_id": i, "voice": "analyst", "opinion": self.notes[i]["opinion"],
-                       "text": self.notes[i]["text"]} for i in e["note_ids"]],
+            "notes": [self._note(i, self.notes[i]["opinion"], number, self.notes[i]["text"]) for i in e["note_ids"]],
         }]}
 
     # ------------------------------------------------------------ data
@@ -281,14 +297,15 @@ class Toolset:
         name = _str(name, "name")
         if name not in self.cards:
             raise ToolError(f"no table {name!r}; use find_data to look tables up")
-        return {"results": [{"source_id": f"table:{name}", "voice": "evidence", **self.cards[name]}]}
+        return {"results": [{"source_id": f"table:{name}", "voice": "evidence", "label": f"Table {name} (schema)",
+                             **self.cards[name]}]}
 
     def tool_get_figure(self, name) -> dict:
         name = _str(name, "name")
         if name not in self.figures:
             raise ToolError(f"no figure {name!r}; use find_data with type 'figure' to look figures up")
         f = self.figures[name]
-        return {"results": [{"source_id": f"figure:{name}", "voice": "evidence", "name": name,
+        return {"results": [{"source_id": f"figure:{name}", "voice": "evidence", "label": f"Figure {name}", "name": name,
                              "hypothesis": f["hypothesis"], "caption": f["caption"],
                              # a path inside the release, never a local filesystem path
                              "file": f"figures/{name}.png"}]}
@@ -317,7 +334,7 @@ class Toolset:
                 timer.cancel()
         return {"results": [{
             "source_id": "query:" + hashlib.sha256(sql.encode("utf-8")).hexdigest()[:12],
-            "voice": "evidence", "sql": sql, "columns": columns,
+            "voice": "evidence", "label": f"Query result: {sql[:120]}", "sql": sql, "columns": columns,
             "rows": [[_json_value(v) for v in r] for r in rows[:cap]],
             "row_count": min(len(rows), cap), "truncated": len(rows) > cap,
         }]}
