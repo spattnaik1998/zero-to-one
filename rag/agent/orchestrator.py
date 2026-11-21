@@ -85,6 +85,9 @@ class Answer:
     turns: int
     usage: dict = field(default_factory=dict)
     budget_exhausted: bool = False
+    # the answer as Claude returned it: text segments in order, each with the source_ids it cites;
+    # "".join(segment texts) is the unstripped answer, so citations can be placed on paragraphs
+    segments: list[dict] = field(default_factory=list)
 
     @property
     def refused(self) -> bool:
@@ -118,6 +121,7 @@ def _blocks(item: dict) -> list[dict]:
     # results (claims, query rows, chapters, tables, values) are cited as compact JSON
     body = parent["text"] if isinstance(parent.get("text"), str) else json.dumps(
         {k: v for k, v in parent.items() if k not in ("source_id", "label")}, ensure_ascii=False)
+    body = body if body.strip() else "(empty)"            # the API rejects empty text blocks
     own = {"type": "search_result", "source": parent["source_id"], "title": parent.get("label") or parent["source_id"],
            "content": [{"type": "text", "text": body}], "citations": {"enabled": True}}
     return [own] + [b for n in nested for b in _blocks(n)]
@@ -214,8 +218,12 @@ class Session:
             self.context_tokens = sum(getattr(response.usage, k, 0) or 0 for k in
                                       ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens",
                                        "output_tokens"))
-            # the full content goes back unchanged (thinking blocks included), as the API requires
-            self.messages.append({"role": "assistant", "content": response.content})
+            # the content goes back unchanged (thinking blocks included), as the API requires, except
+            # empty text blocks: a reply can contain them, but the API rejects them when sent back
+            # (whitespace-only text blocks are ignored by the API's history comparison)
+            kept = [b for b in response.content if not (b.type == "text" and not b.text.strip())]
+            if kept:
+                self.messages.append({"role": "assistant", "content": kept})
             tool_uses = [b for b in response.content if b.type == "tool_use"]
             if response.stop_reason == "pause_turn" and turns < self.max_turns:
                 carried_text += [b for b in response.content if b.type == "text"]
@@ -241,10 +249,12 @@ class Session:
         citations = [Citation(getattr(c, "source", None) or getattr(c, "document_title", ""),
                               getattr(c, "title", None), getattr(c, "cited_text", ""))
                      for b in texts for c in (getattr(b, "citations", None) or [])]
+        segments = [{"text": b.text, "sources": [getattr(c, "source", None) or getattr(c, "document_title", "")
+                                                 for c in (getattr(b, "citations", None) or [])]} for b in texts]
         return Answer(question=question, text="".join(b.text for b in texts).strip(), citations=citations,
                       tool_calls=calls, stop_reason=response.stop_reason, release_id=self.release_id,
                       model=getattr(response, "model", self.model), turns=turns, usage=usage,
-                      budget_exhausted=forced_final)
+                      budget_exhausted=forced_final, segments=segments)
 
 
 def open_session(settings, release_id: str | None = None, **kwargs) -> Session:
