@@ -77,6 +77,7 @@ python -m rag doctor      # checks keys, models, sources and analysis outputs
 python -m rag ingest      # notes, notebook chunks, claims registry, chapter map, DuckDB results database, search indexes
 python -m rag release    # check the build and publish it as an immutable, versioned release
 python -m rag ask "How many of the 2014 top-20 firms were still top 20 in 2025?"
+python -m rag audit      # verify the audit log of every answer
 pytest -q
 ```
 

@@ -187,3 +187,9 @@ def toolset(candidates, hash_embedder, tmp_path):
                              dotenv={})
     publish(settings, GateReport([Check("all", True, "ok")]), root=tmp_path)
     return Toolset(open_release(settings), hash_embedder)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_audit_log(tmp_path, monkeypatch):
+    """Every test writes audit records to its own folder, never to the real build/audit/."""
+    monkeypatch.setenv("RAG_AUDIT_DIR", str(tmp_path / "audit"))

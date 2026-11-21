@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import date
 
@@ -153,6 +154,7 @@ class Session:
         self.messages: list[dict] = []
         # every tool call whose result is in the history: a follow-up answer may rely on any of them
         self.calls_history: list[ToolCall] = []
+        self.session_id = uuid.uuid4().hex            # ties a conversation's records together in the audit log
         self.context_tokens = 0
 
     @property

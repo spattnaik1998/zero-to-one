@@ -63,6 +63,7 @@ class Settings:
     embedding_model: str | None     # pinned: query vectors must match the released index
     sources_dir: Path
     build_dir: Path
+    audit_dir: Path                 # append-only answer log; keep it under the client's retention policy
 
 
 WATCHED = ("CLAUDE_PROVIDER", "CLAUDE_MODEL", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_EMBEDDING_MODEL")
@@ -97,4 +98,5 @@ def load_settings(environ: Mapping[str, str] | None = None,
         embedding_model=get("OPENAI_EMBEDDING_MODEL"),
         sources_dir=ROOT / (get("RAG_SOURCES_DIR") or "sources"),
         build_dir=ROOT / (get("RAG_BUILD_DIR") or "build"),
+        audit_dir=ROOT / (get("RAG_AUDIT_DIR") or str(Path(get("RAG_BUILD_DIR") or "build") / "audit")),
     )
