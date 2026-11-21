@@ -78,19 +78,36 @@ class _Lock:
                 os.write(fd, f"{os.getpid()}\n".encode())
                 os.close(fd)
                 return self
-            except FileExistsError:
+            except (FileExistsError, PermissionError):
+                # Windows: a lock just released by another writer is "delete pending" for a moment,
+                # and creating it again fails with PermissionError instead of FileExistsError
                 try:
                     if time.time() - self.path.stat().st_mtime > STALE_LOCK_S:
                         self.path.unlink(missing_ok=True)
                         continue
                 except FileNotFoundError:
-                    continue
+                    continue                                  # released meanwhile: try again now
+                except PermissionError:
+                    pass                                      # delete pending (Windows): wait below
                 if time.monotonic() > deadline:
                     raise AuditError(f"audit log is locked ({self.path}); another writer is stuck")
                 time.sleep(0.02)
 
     def __exit__(self, *exc):
         self.path.unlink(missing_ok=True)
+
+
+def _replace(src: Path, dst: Path, attempts: int = 50) -> None:
+    """os.replace, retried: on Windows it fails with PermissionError while a reader (`rag audit`)
+    has the target open, which would otherwise withhold an answer for no reason."""
+    for i in range(attempts):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if i == attempts - 1:
+                raise
+            time.sleep(0.02)
 
 
 class AuditLog:
@@ -144,7 +161,7 @@ class AuditLog:
                 tmp = self.dir / "HEAD.json.tmp"
                 tmp.write_text(json.dumps({"seq": full["seq"], "hash": full["hash"], "record_id": full["record_id"],
                                            "file": path.name}) + "\n", encoding="utf-8")
-                os.replace(tmp, self.dir / "HEAD.json")
+                _replace(tmp, self.dir / "HEAD.json")
                 return full
         except AuditError:
             raise

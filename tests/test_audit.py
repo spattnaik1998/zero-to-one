@@ -318,3 +318,28 @@ def test_a_foreign_json_line_is_reported_not_a_crash(log, cli, capsys):
     f = log.files()[0]
     f.write_text(f.read_text(encoding="utf-8") + '{"seq": "three"}\n[1, 2]\n', encoding="utf-8")
     assert sum("not an audit record" in p for p in log.verify()) == 2
+
+
+def test_windows_delete_pending_lock_and_busy_head_are_waited_out(tmp_path, monkeypatch):
+    """On Windows a just-released lock file raises PermissionError when re-created, and replacing
+    HEAD.json raises PermissionError while `rag audit` reads it. Both must be retried, not fail
+    the record (and withhold the answer)."""
+    import rag.agent.audit as audit_mod
+    real_open, real_replace = os.open, os.replace
+    fails = {"open": 3, "replace": 3}
+
+    def flaky_open(path, *a, **k):
+        if str(path).endswith(".lock") and fails["open"]:
+            fails["open"] -= 1
+            raise PermissionError(13, "Permission denied", str(path))
+        return real_open(path, *a, **k)
+
+    def flaky_replace(src, dst):
+        if fails["replace"]:
+            fails["replace"] -= 1
+            raise PermissionError(13, "Permission denied", str(dst))
+        return real_replace(src, dst)
+    monkeypatch.setattr(audit_mod.os, "open", flaky_open)
+    monkeypatch.setattr(audit_mod.os, "replace", flaky_replace)
+    log = AuditLog(tmp_path / "audit")
+    assert log.append({"event": "answer"})["seq"] == 1 and fails == {"open": 0, "replace": 0} and log.verify() == []
