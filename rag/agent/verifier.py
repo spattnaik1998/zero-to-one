@@ -27,10 +27,13 @@ verifies again; an answer that still fails is returned flagged with its violatio
 """
 from __future__ import annotations
 
+import itertools
 import json
 import logging
 import re
 from dataclasses import asdict, dataclass, field
+
+from ..units import column_unit
 
 log = logging.getLogger(__name__)
 
@@ -46,13 +49,27 @@ CLAIM_MENTION = re.compile(r"\bH(\d{1,2})[a-d]?\b")
 UNTESTED_WORDS = re.compile(r"\b(?:untested|not (?:been )?tested|no hypothesis|isn't tested|hasn't been tested|"
                             r"no verdict|doesn't test|does not test|never tested|pending|provisional)\b", re.I)
 DENIAL = re.compile(r"\b(?:no|not|never|nor|neither|without|isn't|wasn't|aren't|doesn't|didn't|cannot|can't)\b", re.I)
-REFUSAL = re.compile(r"\b(?:not|never|can't|cannot|won't|don't|doesn't|whether|if)\b", re.I)
+# what exempts advice wording, within its own clause: a refusal, or reporting the question
+ADVICE_HEDGE = re.compile(r"\b(?:not|never|cannot|can't|won't|don't|doesn't|wouldn't|couldn't|isn't|whether|no (?:basis|evidence)|"
+                          r"(?:say|tell you|know|judge|decide|asking|asked) if)\b", re.I)
+# where a refusal stops covering what follows: "I can't fault it: it is a great investment"
+ADVICE_CLAUSE = re.compile(r"[:;.!?\n]|\b(?:but|however)\b|,\s*(?=(?:it|you|I|they|this|that|investors|so)\b)", re.I)
+# a refusal still open across commas: "I can't say, from this alone, that it is a good investment"
+ADVICE_OPEN_HEDGE = re.compile(r"(?:\bwhether(?: or not)?|(?:n't|cannot|\bnot) (?:say|claim|conclude|tell you)(?: that)?)"
+                               r",[^:;.!?\n]*$", re.I)
 ANALYST_WORDS = re.compile(r"\b(?:analyst|notes?|reading|annotat)", re.I)
 ADVICE = tuple(re.compile(p, re.I) for p in (
-    r"\b(?:you|investors?)\s+(?:should|ought to|must|need to)\s+(?:buy|sell|short|hold|invest in|load up on)\b",
-    r"\bI(?:\s+would|'d)?\s+(?:recommend|suggest|advise)\s+(?:buying|selling|holding|shorting|investing|that you (?:buy|sell))",
+    r"\b(?:you|investors?)\s+(?:should(?:n't| not)?|ought to|must|need to)\s+"
+    # selling a product is Thiel's chapter 11, not a recommendation
+    r"(?:buy|sell(?!\s+(?:(?:(?:it|them) )?to (?:customers|people|users|buyers)\b"
+    r"|(?:your |their |the |a )?(?:products?|services?|vision|ideas?)\b))|short|hold|invest in|load up on)\b",
+    r"\bI(?:'d| would)\s+(?:buy|sell|short|invest in)\b",
+    r"\b(?:you|investors) (?:should|could|might|may want to) consider (?:buying|selling|shorting)\b",
+    r"(?:\bis|'s)\s+an?\s+(?:buy|sell)\b(?!-)",
+    r"\bI(?:\s+would|'d)?\s+(?:recommend|suggest|advise)\s+(?:against\s+)?"
+    r"(?:buying|selling|holding|shorting|investing|that you (?:buy|sell))",
     r"\b(?:strong\s+)?(?:buy|sell)\s+(?:rating|recommendation|signal)\b",
-    r"\bis\s+(?:a\s+)?(?:good|great|bad|strong)\s+(?:buy|investment)\b",
+    r"(?:\bis|'s)\s+(?:an?\s+)?(?:good|great|bad|strong|excellent|poor)\s+(?:buy|investment)\b",
 ))
 
 
@@ -119,6 +136,8 @@ def _checked_numbers(text: str):
             and "$" not in m.group(0)
         if plain_int and 1900 <= n.value <= 2100:
             continue                                            # a year
+        if plain_int and len(n.literal) == 2 and re.search(r"(?:19|20)\d\d\s?[–-]$", text[max(0, start - 6):start]):
+            continue                                            # the end of a year range: 2011–14, 1948-73
         if plain_int and n.value == 16 and re.match(r"\s+September\b", text[m.end():]):
             continue                                            # the publication date
         if re.search(r"\b(?:chapters?|ch\.)\s*(?:\d{1,2}\s*(?:,|and|&|–|-|to)\s*)*$", text[max(0, start - 40):start],
@@ -132,29 +151,53 @@ def _checked_numbers(text: str):
 
 @dataclass
 class Evidence:
-    numbers: set[float]
+    numbers: set[float]                # every number as the tools returned it
     sources: dict[str, str]            # source_id -> voice
     text: str                          # every string in the tool results, for verdict provenance
+    # numbers whose unit is unknown: a unit word in the answer may put them at any scale
+    free: set[float] | None = None
+    # numbers whose column or key names their scale (gain_bn), as absolute amounts
+    absolute: set[float] = field(default_factory=set)
+
+    def __post_init__(self):
+        if self.free is None:
+            self.free = set(self.numbers)
 
     @classmethod
     def from_calls(cls, calls, question: str = "") -> "Evidence":
-        numbers, sources, texts = set(), {}, []
+        ev = cls(set(), {}, "", free=set())
+        texts = []
         for c in calls:
             if not (c.ok and c.result):
                 continue
             literal_only = c.name == "query_table" and not re.search(r"\bfrom\b", str(c.input.get("sql", "")), re.I)
-            _walk(c.result, numbers, sources, texts, collect_numbers=not literal_only)
-        numbers |= _numbers_in(question)
-        return cls(numbers, sources, "\n".join(texts))
+            _walk(c.result, ev, texts, collect_numbers=not literal_only)
+        q = _numbers_in(question)
+        ev.numbers |= q
+        ev.free |= q
+        ev.text = "\n".join(texts)
+        return ev
+
+    def add(self, value: float, unit: dict | None = None) -> None:
+        """A number from a tool result; `unit` from its column or key name (rag.units.column_unit)."""
+        v = abs(float(value))
+        self.numbers.add(v)
+        if unit is None:
+            self.free.add(v)
+        elif unit["scale"]:
+            self.absolute.add(v * unit["scale"])
+        # a percentage has no scale: it supports "5.4%" or "5.4", never "5.4 million"
 
     def supports(self, n: Num) -> bool:
-        """Is `n` supported at its written precision? With a unit word, compare absolute amounts
-        (evidence may be in raw units or already in thousands/millions/billions); without one, compare
-        as written or as a percentage <-> fraction."""
+        """Is `n` supported at its written precision? With a unit word, compare absolute amounts:
+        a number whose column names its scale counts only at that scale ("13.1" in op_income_bn is
+        13.1 billion, not 13.1 million); one of unknown unit may be at any scale. Without a unit
+        word, compare as written or as a percentage <-> fraction."""
         tol = 0.5 * 10 ** -n.decimals + 1e-9
         if n.unit:
             target, tol = n.value * n.unit, tol * n.unit
-            candidates = (v * s for v in self.numbers for s in (1.0, 1e3, 1e6, 1e9, 1e12))
+            candidates = itertools.chain((v * s for v in self.free for s in (1.0, 1e3, 1e6, 1e9, 1e12)),
+                                         self.absolute)
         else:
             # a percentage may restate a fraction (0.7 -> 70%); a plain number may restate a percentage
             # as a fraction (70 -> 0.70); never the other way round, or 3,991 would "support" 40%
@@ -163,26 +206,66 @@ class Evidence:
         return any(abs(c - target) <= max(tol, abs(target) * 1e-9) for c in candidates)
 
 
-def _walk(value, numbers: set, sources: dict, texts: list, collect_numbers: bool = True, key: str | None = None):
+def _is_num(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _walk(value, ev: Evidence, texts: list, collect_numbers: bool = True, key: str | None = None,
+          unit: dict | None = None):
+    """Collect sources, strings and numbers from a tool result. Numbers get the unit their column
+    or key names, where the result says which column or key they belong to."""
     if isinstance(value, dict):
         if "source_id" in value:
-            sources[value["source_id"]] = value.get("voice", "evidence")
+            ev.sources[value["source_id"]] = value.get("voice", "evidence")
+        if collect_numbers and isinstance(value.get("columns"), list) and isinstance(value.get("rows"), list):
+            _walk_rows(value, ev, texts)                       # a query result: units by column
+            rest = {k: v for k, v in value.items() if k not in ("rows",)}
+            for k, v in rest.items():
+                _walk(v, ev, texts, False if k == "columns" else collect_numbers, k)
+            return
+        # a summary value ("summary:H2:airlines_op_margin_pct") or a schema card column ("gain_bn")
+        own = None
+        sid = value.get("source_id")
+        if isinstance(sid, str) and sid.startswith("summary:"):
+            own = column_unit(sid.rsplit(":", 1)[-1])
+        elif isinstance(value.get("name"), str) and ("min" in value or "max" in value):
+            own = column_unit(value["name"])
         for k, v in value.items():
-            _walk(v, numbers, sources, texts, collect_numbers, k)
+            scoped = own if k in ("value", "min", "max", "examples") else None
+            _walk(v, ev, texts, collect_numbers, k, scoped)
     elif isinstance(value, list):
         for v in value:
-            _walk(v, numbers, sources, texts, collect_numbers, key)
+            _walk(v, ev, texts, collect_numbers, key, unit)
     elif isinstance(value, bool) or value is None:
         return
-    elif isinstance(value, (int, float)):
+    elif _is_num(value):
         if collect_numbers:
-            numbers.add(abs(float(value)))
+            ev.add(value, unit)
     elif isinstance(value, str):
         if key in ("sql", "label"):                    # the model's own SQL is not evidence
             return
         texts.append(value)
         if collect_numbers:
-            numbers.update(_numbers_in(value))
+            for v in _numbers_in(value):
+                ev.add(v, unit)
+
+
+def _walk_rows(result: dict, ev: Evidence, texts: list) -> None:
+    """Query rows: a cell takes its column's unit; in a row_label/value table (h1b_wealth_creation)
+    the `value` cell takes the unit its row's label names ("net_gain_neutral_tn"). Other cells in
+    that row keep their own unit, or none."""
+    columns = [str(c) for c in result["columns"]]
+    units = [column_unit(c) for c in columns]
+    label_col = columns.index("row_label") if "row_label" in columns else None
+    for row in result["rows"]:
+        if not isinstance(row, list):
+            continue
+        row_unit = column_unit(row[label_col]) if label_col is not None and label_col < len(row) \
+            and isinstance(row[label_col], str) else None
+        for i, cell in enumerate(row):
+            u = units[i] if i < len(units) else None
+            name = columns[i] if i < len(columns) else None
+            _walk(cell, ev, texts, True, name, u if u is not None or name != "value" else row_unit)
 
 
 # ---------------------------------------------------------------- text structure
@@ -262,6 +345,18 @@ def _paragraphs(segments: list[dict]):
         sources = sorted({s for a, b, ss in spans if a < m.end() and m.start() < b for s in ss})
         if m.group(0).strip():
             yield m.group(0).strip(), sources
+
+
+def gives_advice(text: str) -> list[str]:
+    """Wording that recommends for or against an investment, outside a refusal in the same clause."""
+    text = text.replace("’", "'")
+    found = []
+    for pattern in ADVICE:
+        for m in pattern.finditer(text):
+            clause = ADVICE_CLAUSE.split(text[:m.start()])[-1]
+            if not ADVICE_HEDGE.search(clause) and not ADVICE_OPEN_HEDGE.search(text[:m.start()]):
+                found.append(m.group(0))
+    return found
 
 
 # ---------------------------------------------------------------- the rules
@@ -368,11 +463,8 @@ def verify(answer, toolset, prior_calls=(), question: str | None = None) -> Veri
             v.add("voices", f"cites Thiel's words without naming him: {para[:90]!r}")
 
     # investment advice (a refusal that repeats the question's wording is not advice)
-    for pattern in ADVICE:
-        for m in pattern.finditer(text):
-            a, _ = _sentence_bounds(text, m.start(), m.end())
-            if not REFUSAL.search(text[max(a, m.start() - 40):m.start()]):
-                v.add("advice", f"reads as investment advice: {m.group(0)!r}")
+    for found in gives_advice(text):
+        v.add("advice", f"reads as investment advice: {found!r}")
     return v
 
 

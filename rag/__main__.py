@@ -5,8 +5,11 @@
     python -m rag manifest          write build/manifest.json for the current sources
     python -m rag ingest [notes|notebooks|registry|tables|index|all]
                                     build candidate files in build/candidates/
-    python -m rag release [--check | --list | --pin ID] [--allow-dirty]
-                                    gate a candidate build and publish it as an immutable release
+    python -m rag release [--check | --list | --promote ID | --pin ID] [--allow-dirty] [--skip-eval]
+                                    gate a build and publish it as a release (not yet served);
+                                    --promote serves a release whose evaluation passed; --pin rolls back
+    python -m rag eval [--release ID] [--baseline] [--limit N] [--category C] [--workers N] [--max-cost USD]
+                                    run the golden set (B1 agent, B0 baseline) and write build/eval/<id>/
     python -m rag ask "question" [--json] [--release ID] [--effort low|medium|high|xhigh|max]
                                     answer a question with the agent on the CURRENT release;
                                     exits 1 unless the answer completed and passed its checks;
@@ -88,7 +91,20 @@ def main(argv: list[str] | None = None) -> int:
     g = r.add_mutually_exclusive_group()
     g.add_argument("--check", action="store_true", help="run the gate only; publish nothing")
     g.add_argument("--list", action="store_true", help="list published releases")
-    g.add_argument("--pin", metavar="RELEASE_ID", help="point CURRENT at an existing release (rollback)")
+    g.add_argument("--promote", metavar="RELEASE_ID", help="serve a release whose evaluation passed")
+    g.add_argument("--pin", metavar="RELEASE_ID", help="point CURRENT at an earlier release (rollback); "
+                                                       "it must have passed its evaluation too")
+    r.add_argument("--skip-eval", action="store_true",
+                   help="promote or pin without a passing evaluation (local trials only; stated in the output)")
+    e = sub.add_parser("eval", help="run the golden set on a release")
+    e.add_argument("--release", metavar="RELEASE_ID", help="the release to evaluate (default CURRENT)")
+    e.add_argument("--baseline", action="store_true", help="also run B0 (needed to promote)")
+    e.add_argument("--limit", type=int, help="only the first N questions (a trial; cannot promote)")
+    e.add_argument("--category", action="append", default=[], choices=list(("verdict", "numeric", "chapter",
+                   "method", "cross", "adversarial")), help="only these categories (a trial; cannot promote)")
+    e.add_argument("--workers", type=int, default=4, help="questions answered in parallel")
+    e.add_argument("--max-cost", type=float, default=40.0, help="stop starting questions after this many USD")
+    e.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default="medium")
     r.add_argument("--allow-dirty", action="store_true", help="allow uncommitted release inputs (local trials)")
     a = sub.add_parser("ask", help="answer a question with the agent")
     a.add_argument("question")
@@ -110,6 +126,8 @@ def main(argv: list[str] | None = None) -> int:
         return ask(settings, args)
     if args.cmd == "audit":
         return audit(settings, args)
+    if args.cmd == "eval":
+        return evaluate(settings, args)
     if args.cmd == "release":
         return release(settings, args)
     if args.cmd == "manifest":
@@ -197,9 +215,15 @@ def release(settings, args) -> int:
                   + ("  (dirty)" if r["git"]["dirty"] else ""))
         print(f"{len(rows)} release(s); * = CURRENT" if rows else "no releases yet")
         return 0
-    if args.pin:
-        set_current(settings, args.pin)
-        print(f"CURRENT -> {args.pin}")
+    if args.promote or args.pin:
+        from .eval.run import promotable
+        target = args.promote or args.pin
+        ok, why = promotable(settings, target)
+        if not ok and not args.skip_eval:
+            print(f"not served: {why}")
+            return 1
+        set_current(settings, target)
+        print(f"CURRENT -> {target} ({why}" + ("; evaluation SKIPPED by --skip-eval" if not ok else "") + ")")
         return 0
     report = run_gate(settings, allow_dirty=args.allow_dirty)
     for c in report.checks:
@@ -210,9 +234,29 @@ def release(settings, args) -> int:
     if args.check:
         print("gate passed (check only; nothing published)")
         return 0
-    r = publish(settings, report)
-    print(f"{'published' if r['new'] else 'already published'} {r['release_id']} -> {r['path']}; CURRENT updated")
+    r = publish(settings, report, make_current=False)
+    print(f"{'published' if r['new'] else 'already published'} {r['release_id']} -> {r['path']} (not served yet)")
+    print(f"next: python -m rag eval --release {r['release_id']} --baseline, "
+          f"then python -m rag release --promote {r['release_id']}")
     return 0
+
+
+def evaluate(settings, args) -> int:
+    import anthropic
+
+    from .agent import orchestrator
+    from .eval.run import Baseline, evaluate as run_eval, print_report, report_dir
+    session = orchestrator.open_session(settings, args.release, effort=args.effort)
+    # one dropped question makes a paid run incomplete, so retry harder than when serving
+    session.client = anthropic.Anthropic(api_key=settings.anthropic_api_key, max_retries=6)
+    baseline = Baseline(session.toolset, session.client, settings.claude_model,
+                        effort=args.effort) if args.baseline else None
+    report = run_eval(session, baseline=baseline, limit=args.limit, categories=tuple(args.category),
+                      workers=args.workers, max_cost=args.max_cost, settings=settings,
+                      out_dir=report_dir(settings, session.release_id))
+    print_report(report)
+    print(f"report: {report_dir(settings, session.release_id) / report['run'] / 'report.json'}")
+    return 0 if report["decision"]["passed"] else 1
 
 
 def ingest(settings, what: str) -> int:

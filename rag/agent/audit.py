@@ -12,8 +12,10 @@ SHA-256 of its result, not the result itself); both verifications; whether it wa
 flagged; the release id and content digest; model and effort; tokens; timing; and the session id.
 A question that fails with an exception is logged as an "error" record.
 
-Releases are immutable, so a lookup can be replayed from its input and the release id;
-`result_digest` of the replayed result must equal the recorded `result_sha256`.
+Releases are immutable, so a lookup can be replayed from its input, the release id and the code
+that ran it (`code`: the git commit and a hash of the tool code, since a change to a tool changes what
+it returns): `result_digest` of the replayed result must equal the recorded `result_sha256`. Records
+written before `code` existed replay on the commit that was current at their timestamp.
 
 Writes take a cross-process lock (an atomic lock file), so concurrent sessions cannot fork the
 chain. If a record cannot be written, AuditError is raised and the caller must not show the
@@ -24,6 +26,7 @@ should be kept under the client's retention policy (RAG_AUDIT_DIR).
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import math
@@ -33,10 +36,30 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..sources import git_state
+
 SCHEMA = 1
 GENESIS = "0" * 64
 LOCK_TIMEOUT_S = 10.0
 STALE_LOCK_S = 60.0
+
+
+TOOL_CODE = ("tools/toolset.py", "retrieval.py", "units.py")    # what decides a tool's result
+
+
+@functools.lru_cache(maxsize=None)
+def code_identity() -> dict:
+    """The code behind this process's records. Where git is absent (a container) the hash still
+    identifies it; being unable to ask git must never withhold an answer."""
+    root = Path(__file__).resolve().parent.parent
+    digest = hashlib.sha256()
+    for name in TOOL_CODE:
+        digest.update((root / name).read_bytes().replace(b"\r\n", b"\n"))
+    try:
+        state = git_state()
+    except OSError:
+        state = {"commit": None, "dirty": None}
+    return {**state, "tools_sha256": digest.hexdigest()}
 
 
 class AuditError(RuntimeError):
@@ -173,6 +196,7 @@ class AuditLog:
         return self.append({
             "event": "answer", "user": user, "session_id": session.session_id,
             "release_id": session.release_id, "release_digest": session.toolset.release.manifest.get("content_digest"),
+            "code": code_identity(),
             "model": checked.answer.model, "effort": session.effort,
             "question": attempts[0].question, "answer": checked.answer.text,
             "stop_reason": checked.answer.stop_reason, "ok": checked.answer.ok,
@@ -188,6 +212,7 @@ class AuditLog:
         return self.append({
             "event": "error", "user": user, "session_id": session.session_id, "release_id": session.release_id,
             "release_digest": session.toolset.release.manifest.get("content_digest"), "model": session.model,
+            "code": code_identity(),
             "effort": session.effort, "question": question, "error": f"{type(error).__name__}: {error}",
             "duration_ms": duration_ms,
         })
@@ -241,7 +266,7 @@ class AuditLog:
 
 
 def result_digest(result) -> str | None:
-    """SHA-256 of a tool result in canonical JSON: what a replay on the same release must reproduce."""
+    """SHA-256 of a tool result in canonical JSON: what a replay on the same release and code must reproduce."""
     if result is None:
         return None
     text = json.dumps(_clean(result), sort_keys=True, ensure_ascii=False, separators=(",", ":"),

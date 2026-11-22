@@ -32,6 +32,7 @@ ARTIFACTS = ("notes_chunks.jsonl", "notes_corrections.jsonl", "notebook_chunks.j
 GATED_PATHS = ("notebooks", "output", "findings_report.py", "README.md", "sources/notes", "thiel_common.py")
 ATTESTATION = Path("output") / "provenance.json"
 SYNTHETIC_NAME = re.compile(r"\bFIRM \d+\b")          # how thiel_common's synthetic generators name firms
+RELEASE_ID = re.compile(r"r\d{8}-[0-9a-f]{10}")       # r<UTC date>-<content digest>; see publish()
 
 
 def text_sha256(path: Path) -> str:
@@ -216,8 +217,10 @@ def _release_files(root: Path, candidates: Path) -> dict[str, Path]:
     return files
 
 
-def publish(settings: Settings, report: GateReport, root: Path = ROOT) -> dict:
-    """Copy a passing build into build/releases/<release_id>/ and point CURRENT at it."""
+def publish(settings: Settings, report: GateReport, root: Path = ROOT, make_current: bool = False) -> dict:
+    """Copy a passing build into build/releases/<release_id>/ and, with `make_current`, point CURRENT at
+    it. By default nothing is served: CURRENT should move only after the release's evaluation
+    passes (`python -m rag release --promote ID`)."""
     if not report.passed:
         raise RuntimeError("the release gate did not pass; nothing was published")
     candidates = settings.build_dir / "candidates"
@@ -229,7 +232,8 @@ def publish(settings: Settings, report: GateReport, root: Path = ROOT) -> dict:
     existing = next((d for d in releases.glob(f"r*-{digest[:10]}") if (d / "manifest.json").is_file()), None) \
         if releases.is_dir() else None
     if existing:
-        set_current(settings, existing.name)
+        if make_current:
+            set_current(settings, existing.name)
         return {"release_id": existing.name, "path": str(existing), "new": False}
 
     target = releases / release_id
@@ -258,7 +262,8 @@ def publish(settings: Settings, report: GateReport, root: Path = ROOT) -> dict:
         if p.is_file():
             p.chmod(stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
     tmp.rename(target)
-    set_current(settings, release_id)
+    if make_current:
+        set_current(settings, release_id)
     return {"release_id": release_id, "path": str(target), "new": True}
 
 
@@ -311,6 +316,9 @@ def open_release(settings: Settings, release_id: str | None = None) -> Release:
     release_id = release_id or current_release_id(settings)
     if not release_id:
         raise FileNotFoundError("no release published yet; run python -m rag release")
+    if not RELEASE_ID.fullmatch(release_id):
+        # never a path: "../candidates" would otherwise serve an ungated build
+        raise ValueError(f"{release_id!r} is not a release id (like r20261118-609abb4152)")
     path = settings.build_dir / "releases" / release_id
     manifest_file = path / "manifest.json"
     if not manifest_file.is_file():

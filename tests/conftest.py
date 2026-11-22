@@ -185,7 +185,7 @@ def toolset(candidates, hash_embedder, tmp_path):
     (tmp_path / "output" / "figures" / "h1_fig1_ccdf.png").write_bytes(b"png")
     settings = load_settings(environ={"RAG_BUILD_DIR": str(candidates.parent), "OPENAI_EMBEDDING_MODEL": "hash-test"},
                              dotenv={})
-    publish(settings, GateReport([Check("all", True, "ok")]), root=tmp_path)
+    publish(settings, GateReport([Check("all", True, "ok")]), root=tmp_path, make_current=True)
     return Toolset(open_release(settings), hash_embedder)
 
 

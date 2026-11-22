@@ -115,13 +115,13 @@ def built(tmp_path):
 
 def test_publish_is_immutable_versioned_and_idempotent(built, tmp_path):
     settings, report = built
-    first = publish(settings, report, root=tmp_path)
+    first = publish(settings, report, root=tmp_path, make_current=True)
     assert first["new"] and current_release_id(settings) == first["release_id"]
     rel = open_release(settings)
     assert rel.manifest["claims"] == [{"id": "H1", "status": "final", "verdict": "Partly holds"}]
     assert set(rel.manifest["files"]) == set(ARTIFACTS) | {"figures/h1_fig1.png"}
     assert not (rel.file("analysis.duckdb").stat().st_mode & stat.S_IWRITE)          # read-only
-    assert publish(settings, report, root=tmp_path) == {**first, "new": False}         # same content, same release
+    assert publish(settings, report, root=tmp_path, make_current=True) == {**first, "new": False}         # same content, same release
     with pytest.raises(KeyError):
         rel.file("not_in_release.txt")
 
@@ -135,7 +135,7 @@ def test_a_failed_gate_publishes_nothing(built, tmp_path):
 
 def test_tampering_is_detected(built, tmp_path):
     settings, report = built
-    rel = open_release(settings, publish(settings, report, root=tmp_path)["release_id"])
+    rel = open_release(settings, publish(settings, report, root=tmp_path, make_current=True)["release_id"])
     f = rel.file("indexes.duckdb")
     f.chmod(stat.S_IWRITE | stat.S_IREAD)
     f.write_text("modified")
@@ -148,15 +148,18 @@ def test_tampering_is_detected(built, tmp_path):
 
 def test_new_content_is_a_new_release_and_pin_rolls_back(built, tmp_path):
     settings, report = built
-    first = publish(settings, report, root=tmp_path)["release_id"]
+    first = publish(settings, report, root=tmp_path, make_current=True)["release_id"]
     (settings.build_dir / "candidates" / "figures.json").write_text("changed")
-    second = publish(settings, report, root=tmp_path)["release_id"]
+    second = publish(settings, report, root=tmp_path, make_current=True)["release_id"]
     assert second != first and current_release_id(settings) == second
     set_current(settings, first)
     assert current_release_id(settings) == first
     assert [r["release_id"] for r in list_releases(settings) if r["current"]] == [first]
     with pytest.raises(FileNotFoundError):
-        set_current(settings, "r00000000-nope")
+        set_current(settings, "r00000000-0000000000")            # well formed, not published
+    for not_an_id in ("../candidates", "r00000000-nope", "..", "r20261118-609abb4152/../../x"):
+        with pytest.raises(ValueError, match="not a release id"):
+            set_current(settings, not_an_id)                     # never a path to an ungated build
 
 
 def test_no_release_yet(tmp_path):
