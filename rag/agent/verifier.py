@@ -20,6 +20,7 @@ tool results in the session so far (a follow-up may rely on earlier results).
              paragraph is a warning
   voices     a paragraph citing the analyst's notes says they are the analyst's; one citing
              Thiel's quoted words names Thiel
+  format     no raw tool data (JSON fields, bracketed rows) pasted into the answer
   advice     no buy / sell / hold recommendation (a refusal that repeats the question is not one)
 
 `ask_checked` runs a question, verifies, sends one revision request listing the failures, and
@@ -31,7 +32,7 @@ import itertools
 import json
 import logging
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 
 from ..units import column_unit
 
@@ -57,6 +58,15 @@ ADVICE_CLAUSE = re.compile(r"[:;.!?\n]|\b(?:but|however)\b|,\s*(?=(?:it|you|I|th
 # a refusal still open across commas: "I can't say, from this alone, that it is a good investment"
 ADVICE_OPEN_HEDGE = re.compile(r"(?:\bwhether(?: or not)?|(?:n't|cannot|\bnot) (?:say|claim|conclude|tell you)(?: that)?)"
                                r",[^:;.!?\n]*$", re.I)
+# numbers that are part of a name
+NAMED_NUMBER = re.compile(r"\b(?:S&P|Fortune|Nasdaq|Russell)[ -](?:100|500|1000|2000|3000)\b")
+# "4.7–6.1%" and "40 cents": the number is a percentage though no % follows it
+PERCENT_AFTER = re.compile(r"(?:\s?(?:[–-]|to)\s?[−-]?\d+(?:\.\d+)?\s?%|\s?cents?\b)")
+CONTRACTED_UNTESTED = re.compile(r"\b(?:wasn't|weren't|aren't|hasn't been|haven't been|didn't|don't) test(?:ed)?\b", re.I)
+RAW_DATA = re.compile(
+    r"\"[a-z_]+\"\s*:\s*(?:\"|\[|\{|null|true|false|-?\d)"                            # "status": "final"
+    r"|\[(?:\"[^\"\]\n]*\"|-?\d+(?:\.\d+)?)(?:,\s*(?:\"[^\"\]\n]*\"|-?\d+(?:\.\d+)?)){2,}\]"   # [2025, 5.43, 13]
+    r"|\b[a-z_]+\[\d+\]\.[a-z_]+")                                                    # productivity[4].period
 ANALYST_WORDS = re.compile(r"\b(?:analyst|notes?|reading|annotat)", re.I)
 ADVICE = tuple(re.compile(p, re.I) for p in (
     r"\b(?:you|investors?)\s+(?:should(?:n't| not)?|ought to|must|need to)\s+"
@@ -129,9 +139,12 @@ def _numbers_in(text: str) -> set[float]:
 def _checked_numbers(text: str):
     """Numbers the rule applies to: not a year, chapter number, claim id, list marker or the
     publication date (16 September 2014)."""
+    names = [m.span() for m in NAMED_NUMBER.finditer(text)]
     for m in NUMBER.finditer(text):
         n = _parse(m)
         start = n.start
+        if any(a <= start < b for a, b in names):
+            continue                                            # the S&P 500
         plain_int = n.decimals == 0 and "," not in m.group("num") and not n.unit and not n.percent \
             and "$" not in m.group(0)
         if plain_int and 1900 <= n.value <= 2100:
@@ -146,6 +159,8 @@ def _checked_numbers(text: str):
         line_start = text.rfind("\n", 0, start) + 1
         if text[line_start:start].strip() == "" and re.match(r"\d+[.)]\s", text[start:]):
             continue                                            # a numbered-list marker
+        if not n.percent and not n.unit and PERCENT_AFTER.match(text, m.end()):
+            n = replace(n, percent=True)                        # only now: "from 2014 to 75%" names a year
         yield n
 
 
@@ -423,14 +438,18 @@ def verify(answer, toolset, prior_calls=(), question: str | None = None) -> Veri
             continue
         seen.add(number)
         names = [rf"\b(?:chapters?|ch\.)\s*(?:\d{{1,2}}\s*(?:,|and|&|–|-|to)\s*)*{number}\b"]
+        if number == 0:
+            names.append(r"\bpreface\b")
         names += [rf"\b{re.escape(h)}\b" for h in item["untested_placeholders"]]
         title = item["title"].split(" ", 1)[-1] if item["title"][:1].isdigit() else item["title"]
         names.append(re.escape(title))
         relevant = number in asked_about or any(re.search(p, question + "\n" + text, re.I) for p in names[1:])
         if not relevant:
             continue
-        said = any(UNTESTED_WORDS.search(_sentence(text, m.start(), m.end()))
-                   for p in names for m in re.finditer(p, text, re.I))
+        plain = text.replace("’", "'")
+        untested = lambda s: UNTESTED_WORDS.search(s) or CONTRACTED_UNTESTED.search(s)  # noqa: E731
+        said = any(untested(_sentence(plain, m.start(), m.end()))
+                   for p in names for m in re.finditer(p, plain, re.I))
         if not said:
             v.add("untested", f"chapter {number} is untested, and no sentence about it says so")
 
@@ -462,6 +481,10 @@ def verify(answer, toolset, prior_calls=(), question: str | None = None) -> Veri
         if "thiel" in voices and "Thiel" not in para:
             v.add("voices", f"cites Thiel's words without naming him: {para[:90]!r}")
 
+    raw = RAW_DATA.search(text)
+    if raw:
+        v.add("format", f"pastes raw data into the answer ({raw.group(0)[:60]!r}); say it in words")
+
     # investment advice (a refusal that repeats the question's wording is not advice)
     for found in gives_advice(text):
         v.add("advice", f"reads as investment advice: {found!r}")
@@ -476,7 +499,8 @@ def revision_request(verification: Verification) -> str:
             "Rewrite your complete answer to the original question so that none of these problems remain. "
             "Support every number with a tool result (call tools again if needed) or remove it; give verdicts "
             "only as the tools state them; label the analyst's notes and Thiel's words; cite every paragraph "
-            "that states a fact. Do not mention this check.")
+            "that states a fact, and write figures as cited prose where a table or list would have no citation. "
+            "Do not mention this check.")
 
 
 @dataclass
@@ -517,13 +541,16 @@ class CheckedAnswer:
 def ask_checked(session, question: str) -> CheckedAnswer:
     before = list(session.calls_history)                # results already in the history
     first = session.ask(question)
+    session.emit("checking")
     v1 = verify(first, session.toolset, prior_calls=before)
     if v1.passed or not first.ok:
         return CheckedAnswer(first, v1, v1, revised=False)
+    session.emit("revising")
     try:
         second = session.ask(revision_request(v1))
     except Exception as e:                              # context limit, API error: keep the first answer
         log.warning("revision failed: %s", e)
         return CheckedAnswer(first, v1, v1, revised=False, revision_error=f"{type(e).__name__}: {e}")
+    session.emit("checking")
     v2 = verify(second, session.toolset, prior_calls=before + list(first.tool_calls), question=first.question)
     return CheckedAnswer(second, v2, v1, revised=True, first_answer=first)

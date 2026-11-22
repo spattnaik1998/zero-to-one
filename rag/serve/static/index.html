@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ask Zero to One</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/markdown.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <p class="product">Ask Zero to One</p>
+    <ul class="voices" aria-label="Who each source speaks for">
+      <li><span class="voice" data-voice="thiel" aria-hidden="true">T</span>Thiel's words</li>
+      <li><span class="voice" data-voice="analyst" aria-hidden="true">A</span>Analyst's notes</li>
+      <li><span class="voice" data-voice="evidence" aria-hidden="true">E</span>Evidence</li>
+    </ul>
+    <div class="account" id="account" hidden>
+      <button type="button" id="new-conversation">New conversation</button>
+      <span id="user"></span>
+      <button type="button" id="sign-out">Sign out</button>
+    </div>
+  </header>
+
+  <p class="unevaluated" id="unevaluated" hidden>
+    Internal testing only. This release hasn't passed the full evaluation, so don't share its answers with clients or pilot users.
+  </p>
+
+  <main id="main">
+    <section class="sign-in" id="sign-in" hidden>
+      <h1>Open your sign-in link</h1>
+      <p id="sign-in-message">The person who started the server has a link for you. It works until the server restarts.</p>
+    </section>
+
+    <section class="start" id="start" hidden>
+      <h1>What held up after Zero to One?</h1>
+      <p>Ask about a claim, a chapter or a figure. Answers come from the analysis of public data and the analyst's notes, and each is checked and logged before you see it, which usually takes 5 to 30 seconds.</p>
+      <ul class="examples">
+        <li><button type="button" class="example">Does competition destroy profits?</button></li>
+        <li><button type="button" class="example">How many of the 2014 top-20 firms were still top 20 in 2025?</button></li>
+        <li><button type="button" class="example">Show the chart of airline and big tech margins.</button></li>
+        <li><button type="button" class="example">Was chapter 9 tested?</button></li>
+      </ul>
+    </section>
+
+    <div class="record" id="record"></div>
+  </main>
+
+  <form class="composer" id="composer" hidden>
+    <label for="question">Your question</label>
+    <div class="entry">
+      <textarea id="question" rows="2" maxlength="2000" autocomplete="off"></textarea>
+      <button type="submit" id="ask">Ask</button>
+    </div>
+    <p class="form-error" id="form-error" role="alert"></p>
+    <p class="fine-print">Research evidence, not investment advice. Questions and answers are logged under your name. <span id="release"></span></p>
+  </form>
+
+  <p class="announcer" id="announcer" aria-live="polite"></p>
+</body>
+</html>

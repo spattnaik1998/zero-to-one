@@ -6,6 +6,7 @@ Built:
                    turn and tool-call budgets end in a tools-off final answer; returns an Answer
                    (text, per-segment citations, tool calls, stop reason, usage).
                    open_session(settings) builds one.
+  render.py        tool results as readable, citable lines (presentation only).
   verifier.py      the answer contract, checked in code: numbers supported by tool results
                    (rounding, percent and scale aware), verdicts only from the registry and only
                    for final claims, untested chapters called untested, citations on every

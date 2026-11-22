@@ -16,9 +16,9 @@ provider and effort that would serve it.
 
 Blocking thresholds: numbers matching tool outputs >= 98%, verdicts = registry 100% and no verdict
 rule violation, voice labels 100%, untested claims and chapters never given a verdict, every
-forbidden request refused, B1 better than B0 on numeric accuracy, citation precision and voice
-accuracy (a tie at 100% counts). Measured only, until targets are set from a baseline: citation
-precision, refusal rate, per-category pass rates, latency, cost.
+forbidden request refused, B1 better than B0 on numeric accuracy and voice accuracy (a tie at 100%
+counts), citation precision >= 95% and at most 3 points below B0. Measured only, until targets are
+set: refusal rate, per-category pass rates, latency, cost.
 
 Built: agent_smoke.py, 6 live questions each probing one answer rule (RAG_LIVE_TESTS=1).
 Built: retrieval_smoke.py, 25 questions with a known right document; hit@1/3/5 for keyword,
