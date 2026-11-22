@@ -10,17 +10,22 @@ verifier's own findings (unsupported numbers, verdict and voice violations) feed
 The authorization category runs without a model: requests the tools must refuse (writes, file
 access, other databases, paths outside the release). Every one must be refused.
 
-The report goes to build/eval/<release id>/report.json, with every answer in answers.jsonl.
-`python -m rag release --promote ID` serves a release only if its report passed on the full
-golden set with the baseline run.
+Every run keeps its own folder, build/eval/<release id>/runs/<time>-<full|trial>/. Only a complete
+run (the whole golden set, B1 and B0, every question answered) becomes build/eval/<release id>/
+report.json, so a trial or an interrupted run never replaces it, and a later complete run that fails
+does. `python -m rag release --promote ID` serves a release only if that report passed for the
+system that would serve it: the same answering and scoring code, prompt, model, provider and effort
+(`system_fingerprint`).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import statistics
 import threading
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -42,7 +47,20 @@ THRESHOLDS = {                     # blocking (spec 10); anything else in the re
     "untested_no_verdict": 1.0,    # untested claims and chapters are called untested and get no verdict
     "authorization": 1.0,          # every forbidden request refused
 }
+# what decides an answer or its score; editing any of them makes an evaluation out of date
+EVALUATED_CODE = ("agent/orchestrator.py", "agent/verifier.py", "tools/toolset.py", "retrieval.py", "units.py",
+                  "ingest/embed.py", "eval/golden.py", "eval/reading.py", "eval/run.py")
 BASELINE_METRICS = ("numeric_accuracy", "citation_precision", "voice_accuracy")   # B1 must beat B0 on each
+
+
+def system_fingerprint(model: str, provider: str, effort: str) -> dict:
+    """What an evaluation vouches for, besides the release: the code (the prompts are in it) and how
+    Claude is called. Line endings are normalised, so a checkout on another OS matches."""
+    root = Path(__file__).resolve().parent.parent
+    digest = hashlib.sha256()
+    for name in EVALUATED_CODE:
+        digest.update(name.encode() + b"\0" + (root / name).read_bytes().replace(b"\r\n", b"\n"))
+    return {"code": digest.hexdigest(), "model": model, "provider": provider, "effort": effort}
 
 
 def cost_usd(usage: dict, model: str) -> float:
@@ -67,6 +85,8 @@ class Result:
     verification: dict | None = None
     first_violations: list = field(default_factory=list)   # why a revised answer was revised
     tools: list = field(default_factory=list)
+    calls: list = field(default_factory=list)      # name, input and source id: enough to score again for free
+    revision_error: str | None = None
     usage: dict = field(default_factory=dict)
     cost_usd: float = 0.0
     seconds: float = 0.0
@@ -130,17 +150,23 @@ def run_agent(base_session, resolved, workers: int = 4, budget: Budget | None = 
                 budget.abort(why)                    # ...but an account error stops all of them
             return res
         res.seconds = time.perf_counter() - start
-        if budget and checked.revision_error and "credit balance is too low" in checked.revision_error:
-            budget.abort("the API account is out of credit")
+        if checked.revision_error:
+            res.revision_error = checked.revision_error
+            if budget and ("credit balance is too low" in res.revision_error
+                           or res.revision_error.startswith(ACCOUNT_ERRORS)):
+                budget.abort("the API account refused the revision request")
         a = checked.answer
-        graded = golden.score(r, a, verdicts, chapters)
+        graded = golden.score(r, a, verdicts, chapters, calls=checked.all_tool_calls)
         res.passed, res.checks = graded["passed"], graded["checks"]
         res.citation_precision, res.cited = graded["citation_precision"], graded["cited"]
         res.answer, res.ok, res.revised = a.text, a.ok, checked.revised
         res.verification = checked.verification.to_dict()
-        if checked.revised:
+        if checked.revised or checked.revision_error:
             res.first_violations = [f"[{x.rule}] {x.detail}" for x in checked.first_verification.errors]
         res.tools = [t.name for t in checked.all_tool_calls]
+        res.calls = [{"name": t.name, "input": t.input, "ok": t.ok,
+                      "source_ids": [x.get("source_id") for x in (t.result or {}).get("results", [])]}
+                     for t in checked.all_tool_calls]
         res.usage = checked.usage
         res.cost_usd = cost_usd(res.usage, a.model)
         if budget:
@@ -277,16 +303,17 @@ FORBIDDEN = (
 
 def run_authorization(toolset) -> list[dict]:
     """Each forbidden request through the same entry point the agent uses (Toolset.call). Refused
-    means an error result; anything else is a failure. Also: a candidate build is not a release."""
+    means a ToolError; a result or any other exception is a failure. Also: a candidate build is not a release."""
     from ..tools.toolset import ToolError
     out = []
     for name, inp, what in FORBIDDEN:
         try:
             result = toolset.call(name, inp)
-            refused = isinstance(result, dict) and "error" in result
-            detail = "refused" if refused else f"ran: {json.dumps(result, default=str)[:120]}"
-        except (ToolError, KeyError, ValueError) as e:
-            refused, detail = True, f"refused: {type(e).__name__}: {str(e)[:100]}"
+            refused, detail = False, f"ran: {json.dumps(result, default=str)[:120]}"
+        except ToolError as e:
+            refused, detail = True, f"refused: {str(e)[:100]}"
+        except Exception as e:                       # a crash is not a refusal: the guard did not act
+            refused, detail = False, f"crashed instead of refusing: {type(e).__name__}: {str(e)[:100]}"
         out.append({"request": f"{name} {json.dumps(inp)}", "what": what, "refused": refused, "detail": detail})
     return out
 
@@ -297,9 +324,10 @@ def check_candidates_are_not_releases(settings) -> dict:
         open_release(settings, "../candidates")
         return {"request": "open_release('../candidates')", "what": "serving a CI candidate", "refused": False,
                 "detail": "opened"}
-    except Exception as e:                           # any refusal is the right outcome
-        return {"request": "open_release('../candidates')", "what": "serving a CI candidate", "refused": True,
-                "detail": f"refused: {type(e).__name__}"}
+    except Exception as e:                           # only the id check counts, not a file that happens to be missing
+        return {"request": "open_release('../candidates')", "what": "serving a CI candidate",
+                "refused": isinstance(e, ValueError) and "not a release id" in str(e),
+                "detail": f"{type(e).__name__}: {str(e)[:100]}"}
 
 
 # ---------------------------------------------------------------- metrics and the decision
@@ -348,6 +376,7 @@ def metrics(results: list[Result]) -> dict:
                               sum(any(c["check"] == "declines" for c in r.checks) for r in done)),
         "flagged_answers": sum(1 for v in ver if not v["passed"]),
         "revised_answers": sum(r.revised for r in done),
+        "revisions_failed": [f"{r.id}: {r.revision_error}" for r in done if r.revision_error],
         "latency_s": {"p50": pct(seconds, 0.5), "p95": pct(seconds, 0.95),
                       "lookup_p50": pct(lookups, 0.5), "multi_tool_p50": pct(multi, 0.5)},
         "cost_usd": {"total": round(sum(r.cost_usd for r in done), 2),
@@ -355,6 +384,10 @@ def metrics(results: list[Result]) -> dict:
         "cache_read_share": _rate(usage["cache_read_input_tokens"], prompt),
         "usage": usage,
     }
+
+
+def _all_answered(m: dict) -> bool:
+    return not m["errors"] and not m.get("revisions_failed") and m["answered"] == m["items"]
 
 
 def decide(b1: dict, authz: list[dict], b0: dict | None, full: bool) -> dict:
@@ -371,11 +404,12 @@ def decide(b1: dict, authz: list[dict], b0: dict | None, full: bool) -> dict:
             v = b1.get(k)
         ok = v is not None and (v <= t if k == "verdict_rule_violations" else v >= t)
         gate(k, ok, f"{v} (needs {'<=' if k == 'verdict_rule_violations' else '>='} {t})")
-    gate("complete", full and not b1["errors"] and b1["answered"] == b1["items"],
+    gate("complete", full and _all_answered(b1),
          f"{b1['answered']}/{b1['items']} answered" + ("" if full else "; not the full golden set"))
     if b0 is None:
         gate("beats baseline", False, "baseline (B0) not run")
     else:
+        gate("baseline complete", _all_answered(b0), f"{b0['answered']}/{b0['items']} answered")
         for k in BASELINE_METRICS:
             a, b = b1.get(k), b0.get(k)
             # beating means higher, or both at the ceiling (nothing beats 100%)
@@ -399,6 +433,7 @@ def evaluate(base_session, *, baseline: Baseline | None = None, limit: int | Non
     full = len(chosen) == len(resolved) and items is golden.ITEMS
     budget = Budget(max_cost)
     started = datetime.now(timezone.utc)
+    system = system_fingerprint(base_session.model, base_session.provider, base_session.effort)
     b1 = run_agent(base_session, chosen, workers, budget)
     b0 = run_baseline(baseline, chosen, workers, budget) if baseline else None
     authz = run_authorization(toolset)
@@ -407,7 +442,7 @@ def evaluate(base_session, *, baseline: Baseline | None = None, limit: int | Non
     m1 = metrics(b1)
     m0 = metrics(b0) if b0 is not None else None
     report = {
-        "release_id": toolset.release.release_id, "model": base_session.model, "effort": base_session.effort,
+        "release_id": toolset.release.release_id, "system": system, "model": base_session.model, "effort": base_session.effort,
         "golden_digest": full_digest, "full_golden_set": full, "items_run": len(chosen),
         "started_utc": started.isoformat(timespec="seconds"),
         "finished_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -417,12 +452,20 @@ def evaluate(base_session, *, baseline: Baseline | None = None, limit: int | Non
         "thresholds": THRESHOLDS,
     }
     if out_dir is not None:
-        out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / "report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-        with open(out_dir / "answers.jsonl", "w", encoding="utf-8", newline="\n") as f:
+        kind = "full" if full and baseline else "trial"
+        run_dir = out_dir / "runs" / f"{started:%Y%m%dT%H%M%S}-{kind}-{uuid.uuid4().hex[:6]}"
+        run_dir.mkdir(parents=True)
+        report["run"] = run_dir.relative_to(out_dir).as_posix()
+        text = json.dumps(report, indent=2, ensure_ascii=False)
+        (run_dir / "report.json").write_text(text, encoding="utf-8")
+        with open(run_dir / "answers.jsonl", "w", encoding="utf-8", newline="\n") as f:
             for r in b1 + (b0 or []):
                 f.write(json.dumps(r.__dict__, ensure_ascii=False, default=str) + "\n")
-        (out_dir / "golden_set.json").write_text(golden.as_json(resolved), encoding="utf-8")
+        (run_dir / "golden_set.json").write_text(golden.as_json(resolved), encoding="utf-8")
+        if kind == "full" and _all_answered(m1) and _all_answered(m0):
+            tmp = out_dir / "report.json.tmp"             # pass or fail, the latest complete run is the one that counts
+            tmp.write_text(text, encoding="utf-8")
+            tmp.replace(out_dir / "report.json")
     return report
 
 
@@ -442,7 +485,7 @@ def report_dir(settings, release_id: str) -> Path:
 
 def promotable(settings, release_id: str) -> tuple[bool, str]:
     """May this release be served? Only with a passing report on the full golden set, with the
-    baseline run, scored against today's golden set."""
+    baseline run, scored against today's golden set, on the system that would serve it."""
     f = report_dir(settings, release_id) / "report.json"
     if not f.is_file():
         return False, f"no evaluation report for {release_id}; run: python -m rag eval --release {release_id} --baseline"
@@ -452,6 +495,11 @@ def promotable(settings, release_id: str) -> tuple[bool, str]:
     if not report["decision"]["passed"]:
         failed = ", ".join(g["gate"] for g in report["decision"]["gates"] if not g["ok"])
         return False, f"the evaluation of {release_id} failed: {failed}"
+    from ..agent.orchestrator import DEFAULT_EFFORT
+    now = system_fingerprint(settings.claude_model, settings.claude_provider, DEFAULT_EFFORT)
+    changed = [k for k, v in now.items() if (report.get("system") or {}).get(k) != v]
+    if changed:
+        return False, f"the {', '.join(changed)} changed since the evaluation; run it again"
     from ..release import open_release
     from ..tools.toolset import Toolset
     release = open_release(settings, release_id)
@@ -488,6 +536,8 @@ def print_report(report: dict) -> None:
     print(f"  authorization: {refused}/{len(report['authorization'])} forbidden requests refused")
     for e in m1["errors"]:
         print(f"  ERROR {e}")
+    for e in m1["revisions_failed"]:
+        print(f"  REVISION FAILED {e}")
     for g in report["decision"]["gates"]:
         print(f"  [{'PASS' if g['ok'] else 'FAIL'}] {g['gate']}: {g['detail']}")
     print("evaluation " + ("PASSED: the release may be promoted" if report["decision"]["passed"] else "FAILED"))

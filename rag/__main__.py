@@ -248,13 +248,15 @@ def evaluate(settings, args) -> int:
     from .agent import orchestrator
     from .eval.run import Baseline, evaluate as run_eval, print_report, report_dir
     session = orchestrator.open_session(settings, args.release, effort=args.effort)
-    baseline = Baseline(session.toolset, anthropic.Anthropic(api_key=settings.anthropic_api_key), settings.claude_model,
+    # one dropped question makes a paid run incomplete, so retry harder than when serving
+    session.client = anthropic.Anthropic(api_key=settings.anthropic_api_key, max_retries=6)
+    baseline = Baseline(session.toolset, session.client, settings.claude_model,
                         effort=args.effort) if args.baseline else None
     report = run_eval(session, baseline=baseline, limit=args.limit, categories=tuple(args.category),
                       workers=args.workers, max_cost=args.max_cost, settings=settings,
                       out_dir=report_dir(settings, session.release_id))
     print_report(report)
-    print(f"report: {report_dir(settings, session.release_id) / 'report.json'}")
+    print(f"report: {report_dir(settings, session.release_id) / report['run'] / 'report.json'}")
     return 0 if report["decision"]["passed"] else 1
 
 

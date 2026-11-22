@@ -49,13 +49,18 @@ CLAIM_MENTION = re.compile(r"\bH(\d{1,2})[a-d]?\b")
 UNTESTED_WORDS = re.compile(r"\b(?:untested|not (?:been )?tested|no hypothesis|isn't tested|hasn't been tested|"
                             r"no verdict|doesn't test|does not test|never tested|pending|provisional)\b", re.I)
 DENIAL = re.compile(r"\b(?:no|not|never|nor|neither|without|isn't|wasn't|aren't|doesn't|didn't|cannot|can't)\b", re.I)
-REFUSAL = re.compile(r"\b(?:not|never|can't|cannot|won't|don't|doesn't|whether|if)\b", re.I)
+# what exempts advice wording, within its own clause: a refusal, or reporting the question
+ADVICE_HEDGE = re.compile(r"\b(?:not|never|cannot|can't|won't|don't|doesn't|whether|no (?:basis|evidence)|"
+                          r"(?:say|tell you|know|judge|decide|asking|asked) if)\b", re.I)
+# where a refusal stops covering what follows: "I can't fault it: it is a great investment"
+ADVICE_CLAUSE = re.compile(r"[:;.!?\n]|\b(?:but|however)\b|,\s*(?=(?:it|you|I|they|this|that|investors|so)\b)", re.I)
 ANALYST_WORDS = re.compile(r"\b(?:analyst|notes?|reading|annotat)", re.I)
 ADVICE = tuple(re.compile(p, re.I) for p in (
-    r"\b(?:you|investors?)\s+(?:should|ought to|must|need to)\s+(?:buy|sell|short|hold|invest in|load up on)\b",
-    r"\bI(?:\s+would|'d)?\s+(?:recommend|suggest|advise)\s+(?:buying|selling|holding|shorting|investing|that you (?:buy|sell))",
+    r"\b(?:you|investors?)\s+(?:should(?:n't| not)?|ought to|must|need to)\s+(?:buy|sell|short|hold|invest in|load up on)\b",
+    r"\bI(?:\s+would|'d)?\s+(?:recommend|suggest|advise)\s+(?:against\s+)?"
+    r"(?:buying|selling|holding|shorting|investing|that you (?:buy|sell))",
     r"\b(?:strong\s+)?(?:buy|sell)\s+(?:rating|recommendation|signal)\b",
-    r"\bis\s+(?:a\s+)?(?:good|great|bad|strong)\s+(?:buy|investment)\b",
+    r"(?:\bis|'s)\s+(?:an?\s+)?(?:good|great|bad|strong|excellent|poor)\s+(?:buy|investment)\b",
 ))
 
 
@@ -333,6 +338,18 @@ def _paragraphs(segments: list[dict]):
             yield m.group(0).strip(), sources
 
 
+def gives_advice(text: str) -> list[str]:
+    """Wording that recommends for or against an investment, outside a refusal in the same clause."""
+    text = text.replace("’", "'")
+    found = []
+    for pattern in ADVICE:
+        for m in pattern.finditer(text):
+            clause = ADVICE_CLAUSE.split(text[:m.start()])[-1]
+            if not ADVICE_HEDGE.search(clause):
+                found.append(m.group(0))
+    return found
+
+
 # ---------------------------------------------------------------- the rules
 def verify(answer, toolset, prior_calls=(), question: str | None = None) -> Verification:
     """Check one answer. `prior_calls`: tool calls whose results were already in the session's
@@ -437,11 +454,8 @@ def verify(answer, toolset, prior_calls=(), question: str | None = None) -> Veri
             v.add("voices", f"cites Thiel's words without naming him: {para[:90]!r}")
 
     # investment advice (a refusal that repeats the question's wording is not advice)
-    for pattern in ADVICE:
-        for m in pattern.finditer(text):
-            a, _ = _sentence_bounds(text, m.start(), m.end())
-            if not REFUSAL.search(text[max(a, m.start() - 40):m.start()]):
-                v.add("advice", f"reads as investment advice: {m.group(0)!r}")
+    for found in gives_advice(text):
+        v.add("advice", f"reads as investment advice: {found!r}")
     return v
 
 

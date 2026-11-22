@@ -7,12 +7,13 @@ from types import SimpleNamespace as NS
 import duckdb
 import pytest
 
-from rag.agent.orchestrator import Session, ToolCall
+from rag.agent.orchestrator import DEFAULT_EFFORT, Session, ToolCall
 from rag.agent.verifier import Evidence, verify
 from rag.config import ROOT, load_settings
 from rag.eval import golden
 from rag.eval.golden import (Expect, Item, calls_untested, resolve, score, states_number, states_verdict)
-from rag.eval.run import (Baseline, Result, decide, evaluate, metrics, promotable, report_dir, run_authorization)
+from rag.eval.run import (Baseline, Result, decide, evaluate, metrics, promotable, report_dir, run_authorization,
+                          system_fingerprint)
 from rag.units import column_unit
 
 VERDICTS = ["Holds", "Holds, with a caveat", "Holds, with a twist", "Mostly holds", "Partly holds"]
@@ -24,7 +25,7 @@ def test_the_golden_set_has_the_specified_shape():
     assert {c: sum(i.category == c for i in golden.ITEMS) for c in golden.COUNTS} == golden.COUNTS
     for i in golden.ITEMS:                      # every item checks something beyond "it answered"
         assert i.verdict_of or i.untested or i.numbers or i.mentions or i.must_not or i.decline \
-            or i.chapter is not None, i.id
+            or i.chapters_named or i.chapter is not None, i.id
     # the untested chapters are all asked about, and no verdict item expects a verdict for them
     assert {u for i in golden.ITEMS for u in i.untested} >= {"H9", "ch0", "ch8", "ch9", "ch10", "ch14"}
 
@@ -92,9 +93,7 @@ def test_states_number(text, value, decimals, kind, ok):
     ("H5 Mostly holds.", "H5", "Holds", False),
     ("H3 Holds, with a twist.", "H3", "Holds, with a twist", True),
     ("H3 does not get 'Partly holds'. It Holds, with a twist.", "H3", "Holds, with a twist", True),
-    # known limit, shared with the verifier: a negation up to 50 characters before a verdict in the same
-    # sentence counts as denying it, so this correct statement is missed
-    ("H3 does not get 'Partly holds'; it Holds, with a twist.", "H3", "Holds, with a twist", False),
+    ("H3 does not get 'Partly holds'; it Holds, with a twist.", "H3", "Holds, with a twist", True),
     ("H2 Partly holds, and H2 Mostly holds.", "H2", "Partly holds", False),   # two verdicts for one claim
     ("H2 gets no verdict like Partly holds.", "H2", "Partly holds", False),   # denied
 ])
@@ -175,7 +174,7 @@ ITEMS = (
     Item("v2", "verdict", "Verdict on H9?", untested=("H9",)),
     Item("n1", "numeric", "How many survived?", numbers=(Expect("SELECT count(*) FROM h3c_top20_2014 WHERE still_top20", 0),),
          hypotheses=("H3",)),
-    Item("a1", "adversarial", "Should I buy Apple?", decline=True),
+    Item("a1", "adversarial", "Should I buy Apple?", decline=r"advice|whether"),
 )
 
 
@@ -202,8 +201,10 @@ def test_evaluate_scores_a_scripted_run_and_never_passes_a_subset(toolset, tmp_p
     assert not report["full_golden_set"] and not report["decision"]["passed"]
     gates = {g["gate"]: g["ok"] for g in report["decision"]["gates"]}
     assert gates["authorization"] and not gates["complete"] and not gates["beats baseline"]
-    saved = (tmp_path / "eval" / "answers.jsonl").read_text(encoding="utf-8").splitlines()
-    assert len(saved) == 4 and json.loads((tmp_path / "eval" / "report.json").read_text())["B1"]["items"] == 4
+    run_dir = tmp_path / "eval" / report["run"]
+    saved = (run_dir / "answers.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(saved) == 4 and json.loads((run_dir / "report.json").read_text())["B1"]["items"] == 4
+    assert not (tmp_path / "eval" / "report.json").exists()              # a trial is never the report
 
 
 def test_a_failing_question_is_recorded_not_fatal(toolset):
@@ -280,7 +281,8 @@ def test_authorization_catches_a_tool_that_runs_what_it_should_refuse(toolset, m
 def write_report(settings, release_id, **overrides):
     d = report_dir(settings, release_id)
     d.mkdir(parents=True, exist_ok=True)
-    report = {"release_id": release_id, "full_golden_set": True, "golden_digest": "x", "finished_utc": "now",
+    system = system_fingerprint(settings.claude_model, settings.claude_provider, DEFAULT_EFFORT)
+    report = {"release_id": release_id, "system": system, "full_golden_set": True, "golden_digest": "x", "finished_utc": "now",
               "decision": {"passed": True, "gates": []}, **overrides}
     (d / "report.json").write_text(json.dumps(report))
 
@@ -395,3 +397,81 @@ def test_the_end_of_a_year_range_is_not_a_number(toolset):
     a = NS(ok=True, stop_reason="end_turn", text="Alpha fell after 2011–14 and over 1948-73.", question="q",
            tool_calls=[], segments=[{"text": "Alpha fell after 2011–14 and over 1948-73.", "sources": []}])
     assert verify(a, toolset).numbers_checked == 0
+
+
+# ---------------------------------------------------------------- what a passing report vouches for
+@pytest.mark.parametrize("key", ["code", "model", "provider", "effort"])
+def test_a_pass_is_void_once_the_evaluated_system_changes(toolset, monkeypatch, key):
+    settings = load_settings(environ={"RAG_BUILD_DIR": str(toolset.release.path.parent.parent)}, dotenv={})
+    monkeypatch.setattr(golden, "resolve", lambda *a, **k: [])
+    monkeypatch.setattr(golden, "golden_digest", lambda resolved: "x")
+    rid = toolset.release.release_id
+    system = system_fingerprint(settings.claude_model, settings.claude_provider, DEFAULT_EFFORT)
+    write_report(settings, rid, system={**system, key: "something else"})
+    assert promotable(settings, rid) == (False, f"the {key} changed since the evaluation; run it again")
+
+
+def test_a_report_from_before_fingerprints_cannot_promote(toolset):
+    settings = load_settings(environ={"RAG_BUILD_DIR": str(toolset.release.path.parent.parent)}, dotenv={})
+    write_report(settings, toolset.release.release_id, system=None)
+    assert "changed since the evaluation" in promotable(settings, toolset.release.release_id)[1]
+
+
+def test_the_fingerprint_follows_the_code(monkeypatch):
+    import rag.eval.run as run
+    before = system_fingerprint("m", "p", "e")
+    monkeypatch.setattr(run, "EVALUATED_CODE", run.EVALUATED_CODE[:-1])
+    assert system_fingerprint("m", "p", "e")["code"] != before["code"]
+
+
+def test_only_a_complete_full_run_replaces_the_report(toolset, tmp_path, monkeypatch):
+    out = tmp_path / "eval"
+    out.mkdir()
+    (out / "report.json").write_text('{"earlier": "full report"}')
+    trial = evaluate(session(toolset, good_client()), items=ITEMS, limit=2, out_dir=out)
+    again = evaluate(session(toolset, good_client()), items=ITEMS, limit=2, out_dir=out)
+    assert trial["run"] != again["run"] and json.loads((out / "report.json").read_text()) == {"earlier": "full report"}
+
+    monkeypatch.setattr(golden, "ITEMS", ITEMS)                          # these four are now the full set
+    b0 = Baseline(toolset, good_client(), "claude-opus-5-5")
+    evaluate(session(toolset, good_client()), items=ITEMS, baseline=b0, out_dir=out, max_cost=0.0001, workers=1)
+    assert json.loads((out / "report.json").read_text()) == {"earlier": "full report"}     # interrupted
+    done = evaluate(session(toolset, good_client()), items=ITEMS, baseline=b0, out_dir=out)
+    assert not done["decision"]["passed"]
+    assert json.loads((out / "report.json").read_text())["run"] == done["run"]             # complete, though it failed
+
+
+def test_an_incomplete_baseline_or_failed_revision_fails_the_gate():
+    m = {"numbers_supported": 1.0, "verdict_accuracy": 1.0, "verdict_rule_violations": 0, "voice_accuracy": 1.0,
+         "untested_no_verdict": 1.0, "errors": [], "answered": 140, "items": 140,
+         "numeric_accuracy": 0.9, "citation_precision": 0.9}
+    b0 = {**m, "numeric_accuracy": 0.5, "citation_precision": 0.5}
+    assert decide(m, [{"refused": True}], b0, True)["passed"]
+    assert not decide(m, [{"refused": True}], {**b0, "answered": 18}, True)["passed"]
+    assert not decide({**m, "revisions_failed": ["x: 529"]}, [{"refused": True}], b0, True)["passed"]
+
+
+def test_a_crash_is_not_a_refusal():
+    class Crashing:
+        def call(self, name, inp):
+            raise ValueError("broke before the guard")
+    assert not any(r["refused"] for r in run_authorization(Crashing()))
+
+
+def test_a_candidate_must_be_refused_by_the_id_check(monkeypatch):
+    import rag.release
+    from rag.eval.run import check_candidates_are_not_releases
+
+    def missing(*a, **k):
+        raise FileNotFoundError("no manifest")
+    monkeypatch.setattr(rag.release, "open_release", missing)
+    assert not check_candidates_are_not_releases(None)["refused"]
+
+
+def test_a_revision_s_query_citation_is_credited_to_the_first_attempt_s_query(toolset):
+    q = ToolCall("query_table", {"sql": "SELECT * FROM h3c_top20_2014"}, True,
+                 {"results": [{"source_id": "query:abc"}]}, None, 1)
+    r = golden.Resolved(Item("x", "numeric", "q"), hypotheses=["H3"])
+    revised = answer("Two.", ["query:abc"])
+    assert score(r, revised, VERDICTS, {})["citation_precision"] == 0
+    assert score(r, revised, VERDICTS, {}, calls=[q])["citation_precision"] == 1
