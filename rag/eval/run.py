@@ -127,6 +127,8 @@ def account_error(e: BaseException) -> str | None:
         return f"{type(e).__name__}"
     if "credit balance is too low" in text:
         return "the API account is out of credit"
+    if "reached your specified API usage limits" in text:
+        return "the API account reached its usage limit"
     return None
 
 
@@ -152,8 +154,8 @@ def run_agent(base_session, resolved, workers: int = 4, budget: Budget | None = 
         res.seconds = time.perf_counter() - start
         if checked.revision_error:
             res.revision_error = checked.revision_error
-            if budget and ("credit balance is too low" in res.revision_error
-                           or res.revision_error.startswith(ACCOUNT_ERRORS)):
+            if budget and (res.revision_error.startswith(ACCOUNT_ERRORS)
+                           or account_error(RuntimeError(res.revision_error))):
                 budget.abort("the API account refused the revision request")
         a = checked.answer
         graded = golden.score(r, a, verdicts, chapters, calls=checked.all_tool_calls)
@@ -534,8 +536,9 @@ def print_report(report: dict) -> None:
     print("  by category (B1): " + ", ".join(f"{c} {v['passed']}/{v['of']}" for c, v in m1["by_category"].items()))
     refused = sum(a["refused"] for a in report["authorization"])
     print(f"  authorization: {refused}/{len(report['authorization'])} forbidden requests refused")
-    for e in m1["errors"]:
-        print(f"  ERROR {e}")
+    for label, m in (("B1", m1), ("B0", m0)):
+        for e in m["errors"] if m else ():
+            print(f"  ERROR {label} {e}")
     for e in m1["revisions_failed"]:
         print(f"  REVISION FAILED {e}")
     for g in report["decision"]["gates"]:

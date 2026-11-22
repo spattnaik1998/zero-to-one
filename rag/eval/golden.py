@@ -168,7 +168,7 @@ NUMERIC = (
     _n(19, "H1", "What was the total public float of US firms in 2025?",
        ("SELECT total_float_tn FROM h1a_distribution_by_year WHERE year = 2025", 0, "tn")),
     _n(20, "H1", "In simulated 25-company portfolios of small firms, how often does the best holding outweigh all "
-                 "the others combined?",
+                 "the others combined, if exits are valued at zero?",
        ("SELECT P_best_ge_rest_all FROM h1c_portfolio_simulation WHERE universe LIKE 'small%' AND exit_value = 0", 0,
         "share")),
     _n(21, "H4", "What multiple did Tesla return from the book's publication to the end date?",
@@ -401,19 +401,26 @@ def stated_numbers(text: str):
 
 
 def states_number(text: str, value: float, decimals: int, kind: str) -> bool:
-    """Does the answer state `value` (stored as `kind`) to at least `decimals` places? The sign is
-    not checked ("fell 51.8%" states -51.8)."""
+    """Does the answer state `value` (stored as `kind`) to at least `decimals` places, and correctly
+    at the precision it is written? "5.45%" does not state 5.4287, though it is within 0.05; a unit in
+    the last place is allowed, for truncation or rounding twice. An amount may be restated in a larger
+    unit to three significant digits ($3.99 trillion for 3,991 billion). The sign is not checked
+    ("fell 51.8%" states -51.8)."""
     target = abs(value)
     scale = UNIT_SCALE[kind]
-    for v, unit, percent, _ in stated_numbers(text):
+    for v, unit, percent, written_dp in stated_numbers(text):
+        last_place = 1.01 * 10 ** -written_dp
         if kind == "share":                                   # 0.7 as "0.70" or "70%"
-            if abs(v - target * 100) <= 0.5 * 10 ** -decimals + 1e-9:
+            if abs(v - target * 100) <= min(0.5 * 10 ** -decimals + 1e-9, last_place):
                 return True
-            if not percent and abs(v - target) <= 0.5 * 10 ** -(decimals + 2) + 1e-12:
+            if not percent and abs(v - target) <= min(0.5 * 10 ** -(decimals + 2) + 1e-12, last_place):
                 return True
             continue
-        written = v * unit if unit else v * scale             # no unit word: read at the stored scale
-        if abs(written - target * scale) <= (0.5 * 10 ** -decimals + 1e-9) * scale:
+        multiple = unit or scale                              # no unit word: read at the stored scale
+        off = abs(v * multiple - target * scale)
+        if off <= min((0.5 * 10 ** -decimals + 1e-9) * scale, last_place * multiple):
+            return True
+        if 1 < scale < multiple and round(v * 10 ** written_dp) >= 100 and off <= 0.5 * 10 ** -written_dp * multiple:
             return True
     return False
 
@@ -456,6 +463,8 @@ def calls_untested(text: str, key: str, all_verdicts: list[str], chapters: dict 
     given = given_verdicts(text, all_verdicts) if given is None else given
     if any(x.subjects & keys for x in given):
         return False
+    if only_subject and given and not given[0].subjects:
+        return False                              # "The verdict is Holds": of the only thing asked about
     return said_untested(text, keys, only_subject)
 
 
@@ -513,7 +522,7 @@ def score(r: Resolved, answer, all_verdicts: list[str], chapters: dict, calls=No
     for p in r.item.must_not:
         check(f"does not say /{p}/", not re.search(p, plain, re.I))
     if r.item.no_advice:
-        check("gives no advice", not gives_advice(plain) and not re.match(r"(?:yes|buy|sell)", plain.strip(), re.I))
+        check("gives no advice", not gives_advice(plain) and not re.match(r"(?:yes|buy|sell)\b", plain.strip(), re.I))
     if r.item.decline:
         check("declines", refuses(text, r.item.decline))
     cited = sorted({c.source_id for c in answer.citations})

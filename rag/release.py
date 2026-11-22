@@ -217,10 +217,10 @@ def _release_files(root: Path, candidates: Path) -> dict[str, Path]:
     return files
 
 
-def publish(settings: Settings, report: GateReport, root: Path = ROOT, make_current: bool = True) -> dict:
+def publish(settings: Settings, report: GateReport, root: Path = ROOT, make_current: bool = False) -> dict:
     """Copy a passing build into build/releases/<release_id>/ and, with `make_current`, point CURRENT at
-    it. The command line publishes without moving CURRENT: a release is served only after its
-    evaluation passes (`python -m rag release --promote ID`)."""
+    it. By default nothing is served: CURRENT should move only after the release's evaluation
+    passes (`python -m rag release --promote ID`)."""
     if not report.passed:
         raise RuntimeError("the release gate did not pass; nothing was published")
     candidates = settings.build_dir / "candidates"

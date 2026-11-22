@@ -10,7 +10,6 @@
                                     --promote serves a release whose evaluation passed; --pin rolls back
     python -m rag eval [--release ID] [--baseline] [--limit N] [--category C] [--workers N] [--max-cost USD]
                                     run the golden set (B1 agent, B0 baseline) and write build/eval/<id>/
-                                    gate a candidate build and publish it as an immutable release
     python -m rag ask "question" [--json] [--release ID] [--effort low|medium|high|xhigh|max]
                                     answer a question with the agent on the CURRENT release;
                                     exits 1 unless the answer completed and passed its checks;

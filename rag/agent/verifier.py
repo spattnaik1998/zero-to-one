@@ -50,13 +50,22 @@ UNTESTED_WORDS = re.compile(r"\b(?:untested|not (?:been )?tested|no hypothesis|i
                             r"no verdict|doesn't test|does not test|never tested|pending|provisional)\b", re.I)
 DENIAL = re.compile(r"\b(?:no|not|never|nor|neither|without|isn't|wasn't|aren't|doesn't|didn't|cannot|can't)\b", re.I)
 # what exempts advice wording, within its own clause: a refusal, or reporting the question
-ADVICE_HEDGE = re.compile(r"\b(?:not|never|cannot|can't|won't|don't|doesn't|whether|no (?:basis|evidence)|"
+ADVICE_HEDGE = re.compile(r"\b(?:not|never|cannot|can't|won't|don't|doesn't|wouldn't|couldn't|isn't|whether|no (?:basis|evidence)|"
                           r"(?:say|tell you|know|judge|decide|asking|asked) if)\b", re.I)
 # where a refusal stops covering what follows: "I can't fault it: it is a great investment"
 ADVICE_CLAUSE = re.compile(r"[:;.!?\n]|\b(?:but|however)\b|,\s*(?=(?:it|you|I|they|this|that|investors|so)\b)", re.I)
+# a refusal still open across commas: "I can't say, from this alone, that it is a good investment"
+ADVICE_OPEN_HEDGE = re.compile(r"(?:\bwhether(?: or not)?|(?:n't|cannot|\bnot) (?:say|claim|conclude|tell you)(?: that)?)"
+                               r",[^:;.!?\n]*$", re.I)
 ANALYST_WORDS = re.compile(r"\b(?:analyst|notes?|reading|annotat)", re.I)
 ADVICE = tuple(re.compile(p, re.I) for p in (
-    r"\b(?:you|investors?)\s+(?:should(?:n't| not)?|ought to|must|need to)\s+(?:buy|sell|short|hold|invest in|load up on)\b",
+    r"\b(?:you|investors?)\s+(?:should(?:n't| not)?|ought to|must|need to)\s+"
+    # selling a product is Thiel's chapter 11, not a recommendation
+    r"(?:buy|sell(?!\s+(?:(?:(?:it|them) )?to (?:customers|people|users|buyers)\b"
+    r"|(?:your |their |the |a )?(?:products?|services?|vision|ideas?)\b))|short|hold|invest in|load up on)\b",
+    r"\bI(?:'d| would)\s+(?:buy|sell|short|invest in)\b",
+    r"\b(?:you|investors) (?:should|could|might|may want to) consider (?:buying|selling|shorting)\b",
+    r"(?:\bis|'s)\s+an?\s+(?:buy|sell)\b(?!-)",
     r"\bI(?:\s+would|'d)?\s+(?:recommend|suggest|advise)\s+(?:against\s+)?"
     r"(?:buying|selling|holding|shorting|investing|that you (?:buy|sell))",
     r"\b(?:strong\s+)?(?:buy|sell)\s+(?:rating|recommendation|signal)\b",
@@ -345,7 +354,7 @@ def gives_advice(text: str) -> list[str]:
     for pattern in ADVICE:
         for m in pattern.finditer(text):
             clause = ADVICE_CLAUSE.split(text[:m.start()])[-1]
-            if not ADVICE_HEDGE.search(clause):
+            if not ADVICE_HEDGE.search(clause) and not ADVICE_OPEN_HEDGE.search(text[:m.start()]):
                 found.append(m.group(0))
     return found
 
