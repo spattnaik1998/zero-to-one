@@ -44,7 +44,8 @@ LOCK_TIMEOUT_S = 10.0
 STALE_LOCK_S = 60.0
 
 
-TOOL_CODE = ("tools/toolset.py", "retrieval.py", "units.py")    # what decides a tool's result
+# what decides a tool's result, and the cited text whose fingerprint is logged
+TOOL_CODE = ("tools/toolset.py", "retrieval.py", "units.py", "agent/render.py", "agent/orchestrator.py")
 
 
 @functools.lru_cache(maxsize=None)
@@ -303,13 +304,20 @@ def _attempt(a) -> dict:
 def ask_audited(session, question: str, audit: AuditLog, user: str | None = None):
     """ask_checked, with the outcome written to the audit log before it is returned. If the question
     fails, an error record is written and the exception re-raised. If the record cannot be written,
-    AuditError is raised and the answer must not be shown."""
+    AuditError is raised, the answer must not be shown, and the session forgets it (or a follow-up
+    question could reveal an answer that is not on the record)."""
     from .verifier import ask_checked
     start = time.perf_counter()
+    mark = session.checkpoint()
     try:
         checked = ask_checked(session, question)
     except Exception as e:
         audit.record_error(session, question, e, int((time.perf_counter() - start) * 1000), user)
         raise
-    record = audit.record_answer(session, checked, int((time.perf_counter() - start) * 1000), user)
+    try:
+        session.emit("recording")
+        record = audit.record_answer(session, checked, int((time.perf_counter() - start) * 1000), user)
+    except BaseException:
+        session.restore(mark)
+        raise
     return checked, record

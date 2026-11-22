@@ -15,6 +15,8 @@
                                     exits 1 unless the answer completed and passed its checks;
                                     every answer is written to the audit log first (exit 2 and no
                                     answer if it cannot be)
+    python -m rag serve --user NAME [--user NAME ...] [--port 8765]
+                                    the web chat, on this computer only; prints each user's sign-in link
     python -m rag audit [--verify | --tail N | --show RECORD_ID]
                                     check the audit log's hash chain, list or show records
 """
@@ -112,6 +114,10 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--release", metavar="RELEASE_ID", help="a release other than CURRENT")
     a.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default="medium")
     a.add_argument("--user", help="who is asking (recorded in the audit log)")
+    sv = sub.add_parser("serve", help="start the web chat on this computer")
+    sv.add_argument("--user", action="append", required=True, metavar="NAME",
+                    help="someone who may sign in; repeat for several (the name goes in the audit log)")
+    sv.add_argument("--port", type=int, default=8765)
     au = sub.add_parser("audit", help="check or read the audit log")
     ag = au.add_mutually_exclusive_group()
     ag.add_argument("--verify", action="store_true", help="re-walk the hash chain (the default)")
@@ -126,6 +132,9 @@ def main(argv: list[str] | None = None) -> int:
         return ask(settings, args)
     if args.cmd == "audit":
         return audit(settings, args)
+    if args.cmd == "serve":
+        from .serve.app import run as serve
+        return serve(settings, args.user, args.port)
     if args.cmd == "eval":
         return evaluate(settings, args)
     if args.cmd == "release":

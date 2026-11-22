@@ -48,9 +48,13 @@ THRESHOLDS = {                     # blocking (spec 10); anything else in the re
     "authorization": 1.0,          # every forbidden request refused
 }
 # what decides an answer or its score; editing any of them makes an evaluation out of date
-EVALUATED_CODE = ("agent/orchestrator.py", "agent/verifier.py", "tools/toolset.py", "retrieval.py", "units.py",
+EVALUATED_CODE = ("agent/orchestrator.py", "agent/verifier.py", "agent/render.py", "tools/toolset.py", "retrieval.py", "units.py",
                   "ingest/embed.py", "eval/golden.py", "eval/reading.py", "eval/run.py")
-BASELINE_METRICS = ("numeric_accuracy", "citation_precision", "voice_accuracy")   # B1 must beat B0 on each
+BASELINE_METRICS = ("numeric_accuracy", "voice_accuracy")   # B1 must beat B0 on each
+# citation precision is near the ceiling for both systems, where one off-topic citation would decide
+# "must beat": it needs a floor, and to stay close to the baseline (decided 2026-11-22)
+CITATION_FLOOR = 0.95
+CITATION_MARGIN = 0.03
 
 
 def system_fingerprint(model: str, provider: str, effort: str) -> dict:
@@ -417,6 +421,11 @@ def decide(b1: dict, authz: list[dict], b0: dict | None, full: bool) -> dict:
             # beating means higher, or both at the ceiling (nothing beats 100%)
             ok = a is not None and b is not None and (a > b or a == b == 1.0)
             gate(f"beats baseline on {k}", ok, f"B1 {a} vs B0 {b}")
+    a, b = b1.get("citation_precision"), (b0 or {}).get("citation_precision")
+    gate("citation_precision", a is not None and a >= CITATION_FLOOR, f"{a} (needs >= {CITATION_FLOOR})")
+    gate("citation_precision near baseline",
+         a is not None and b is not None and round(b - a, 6) <= CITATION_MARGIN,
+         f"B1 {a} vs B0 {b} (at most {CITATION_MARGIN} below)")
     return {"passed": all(g["ok"] for g in gates), "gates": gates}
 
 

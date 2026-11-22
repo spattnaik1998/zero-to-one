@@ -144,7 +144,7 @@ def test_tool_results_are_citable_with_the_toolsets_labels(toolset):
     query = to_tool_result("t", toolset.call("query_table", {"sql": "SELECT 8 AS n"}))
     block = query["content"][0]
     assert block["source"].startswith("query:") and block["title"] == "Query result: SELECT 8 AS n"
-    assert json.loads(block["content"][0]["text"])["rows"] == [[8]]      # structured results cited as JSON
+    assert [c["text"] for c in block["content"]] == ["Columns of this query: n.", "n: 8."]   # a row is a line
     assert to_tool_result("t", {"results": []})["content"] == "No results."
 
 
@@ -154,15 +154,16 @@ def test_nested_items_become_their_own_blocks_in_their_own_voice(toolset):
     by_source = {b["source"]: b for b in chapter}
     assert by_source["note-09-01"]["title"] == "Analyst's note, chapter 9"
     assert by_source["note-09-01"]["content"][0]["text"].startswith("A board of three")
-    parent = json.loads(by_source["chapter:9"]["content"][0]["text"])
-    assert parent["notes"] == ["note-09-01"] and "board of three" not in by_source["chapter:9"]["content"][0]["text"]
+    parent = " ".join(c["text"] for c in by_source["chapter:9"]["content"])
+    assert "has not been tested" in parent and "board of three" not in parent
 
     claim = to_tool_result("t", toolset.call("get_claim", {"id": "H1"}))["content"]
     by_source = {b["source"]: b for b in claim}
     assert by_source["quote:H1"]["title"] == "Thiel, quoted in H1" and by_source["quote:H1"]["content"][0]["text"] == "q"
     assert by_source["summary:H1:n_firms"]["title"] == "Summary value H1 n_firms"
-    parent = json.loads(by_source["claim:H1"]["content"][0]["text"])
-    assert parent["thiel_quote"] == "quote:H1" and "summary:H1:alpha" in parent["headline_values"]
+    parent = " ".join(c["text"] for c in by_source["claim:H1"]["content"])
+    assert '"Partly holds"' in parent and "quote:H1" not in parent and "{" not in parent
+    assert "summary:H1:alpha" in by_source
     assert by_source["claim:H1"]["title"] == "Claim H1: The power law (status final)"
 
 

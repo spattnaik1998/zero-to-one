@@ -223,7 +223,7 @@ def test_the_cost_limit_stops_new_questions(toolset):
 def test_decide_blocks_on_each_threshold():
     base = {"numbers_supported": 1.0, "verdict_accuracy": 1.0, "verdict_rule_violations": 0, "voice_accuracy": 1.0,
             "untested_no_verdict": 1.0, "errors": [], "answered": 140, "items": 140,
-            "numeric_accuracy": 0.9, "citation_precision": 0.9}
+            "numeric_accuracy": 0.9, "citation_precision": 0.96}
     b0 = {**base, "numeric_accuracy": 0.5, "citation_precision": 0.5, "voice_accuracy": 0.8}
     authz = [{"refused": True}]
     assert decide(base, authz, b0, True)["passed"]
@@ -234,7 +234,7 @@ def test_decide_blocks_on_each_threshold():
     assert not decide(base, authz, None, True)["passed"]                  # no baseline
     assert not decide(base, authz, {**b0, "numeric_accuracy": 0.95}, True)["passed"]   # B0 better
     assert decide(base, authz, {**b0, "voice_accuracy": 1.0}, True)["passed"]          # a tie at 100%
-    assert not decide(base, authz, {**b0, "citation_precision": 0.9}, True)["passed"]  # a tie below it
+    assert not decide(base, authz, {**b0, "numeric_accuracy": 0.9}, True)["passed"]    # a tie below it
     assert not decide(base, authz, b0, False)["passed"]                   # a subset
 
 
@@ -387,7 +387,7 @@ def test_an_account_error_stops_the_run_instead_of_sending_every_question(toolse
 def test_a_missing_baseline_value_fails_the_comparison():
     base = {"numbers_supported": 1.0, "verdict_accuracy": 1.0, "verdict_rule_violations": 0, "voice_accuracy": 1.0,
             "untested_no_verdict": 1.0, "errors": [], "answered": 140, "items": 140,
-            "numeric_accuracy": 0.9, "citation_precision": 0.9}
+            "numeric_accuracy": 0.9, "citation_precision": 0.96}
     b0 = {**base, "numeric_accuracy": 0.5, "citation_precision": None, "voice_accuracy": 0.8}
     assert not decide(base, [{"refused": True}], b0, True)["passed"]
 
@@ -444,7 +444,7 @@ def test_only_a_complete_full_run_replaces_the_report(toolset, tmp_path, monkeyp
 def test_an_incomplete_baseline_or_failed_revision_fails_the_gate():
     m = {"numbers_supported": 1.0, "verdict_accuracy": 1.0, "verdict_rule_violations": 0, "voice_accuracy": 1.0,
          "untested_no_verdict": 1.0, "errors": [], "answered": 140, "items": 140,
-         "numeric_accuracy": 0.9, "citation_precision": 0.9}
+         "numeric_accuracy": 0.9, "citation_precision": 0.96}
     b0 = {**m, "numeric_accuracy": 0.5, "citation_precision": 0.5}
     assert decide(m, [{"refused": True}], b0, True)["passed"]
     assert not decide(m, [{"refused": True}], {**b0, "answered": 18}, True)["passed"]

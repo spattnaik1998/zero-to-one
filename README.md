@@ -79,6 +79,7 @@ python -m rag release    # check the build and publish it as an immutable, versi
 python -m rag eval --release <id> --baseline   # 140-question golden set; must pass before the release is served
 python -m rag release --promote <id>
 python -m rag ask "How many of the 2014 top-20 firms were still top 20 in 2025?"
+python -m rag serve --user you   # web chat on this computer; open the sign-in link it prints
 python -m rag audit      # verify the audit log of every answer
 pytest -q
 ```
